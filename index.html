@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>IRIS OS · Assistente de IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08070a;
+    --panel:#0e0b0d;
+    --panel-2:#150f11;
+    --line: rgba(224,45,55,.28);
+    --line-soft: rgba(224,45,55,.14);
+    --red:#e0202c;
+    --red-2:#ff4d4d;
+    --red-dim:#5c1418;
+    --text:#f2e9e9;
+    --text-dim:#93807f;
+    --green:#33d17a;
+    --font-display:'Inter', system-ui, sans-serif;
+    --font-body:'Inter', system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1px 1px at 12px 12px, rgba(224,45,55,.35) 1px, transparent 1.6px) 0 0/26px 26px,
+      radial-gradient(70% 45% at 50% -5%, rgba(224,45,55,.14), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:16px;
+    -webkit-tap-highlight-color:transparent;
+    overflow:hidden;
+  }
+  h1,h2,h3{ font-family:var(--font-display); font-weight:700; margin:0; }
+  button, input, select{ font-family:var(--font-body); }
+  ::selection{ background:var(--red); color:#fff; }
+
+  .icon{ width:1em; height:1em; display:inline-block; vertical-align:-0.14em; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+  .hud-frame{
+    background:var(--panel);
+    border:1px solid var(--line);
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .dot{
+    width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0;
+    box-shadow:0 0 6px var(--green);
+  }
+  .dot.off{ background:var(--text-dim); box-shadow:none; }
+  .dot.pulse{ animation:dot-pulse 1.4s ease-in-out infinite; }
+  @keyframes dot-pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  /* ===================== MOBILE TOP BAR ===================== */
+  .mobile-bar{
+    display:none;
+    align-items:center; justify-content:space-between;
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+    flex-shrink:0;
+  }
+  .hud-icon-btn{
+    width:36px; height:36px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--red-2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; cursor:pointer;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .mobile-bar .mobile-title{
+    font-family:var(--font-display); font-weight:700; letter-spacing:.08em; font-size:14px; color:var(--red-2);
+  }
+  .mobile-actions{ display:flex; gap:8px; }
+
+  /* ===================== SHELL / LAYOUT ===================== */
+  #app{ height:100vh; height:100dvh; display:flex; flex-direction:column; }
+  .shell{ flex:1; display:flex; min-height:0; position:relative; }
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    width:250px; flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:22px 18px 16px;
+    display:flex; flex-direction:column;
+    position:fixed; top:0; bottom:0; left:0; z-index:40;
+    transform:translateX(-100%);
+    transition:transform .22s ease;
+    overflow-y:auto;
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .brand{ text-align:center; margin-bottom:22px; }
+  .aperture-logo{ width:64px; height:64px; margin:0 auto 10px; }
+  .brand h1{ font-size:19px; letter-spacing:.06em; color:var(--text); }
+  .brand h1 .ver{ color:var(--red-2); }
+  .brand p{ margin:3px 0 0; font-size:11.5px; color:var(--text-dim); letter-spacing:.02em; }
+
+  .side-nav{ display:flex; flex-direction:column; gap:6px; flex:1; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    background:transparent; border:1px solid transparent;
+    color:var(--text-dim);
+    padding:11px 12px;
+    font-family:var(--font-body); font-weight:600; font-size:13.5px; letter-spacing:.05em;
+    text-align:left; cursor:pointer;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .nav-item .icon{ width:15px; height:15px; }
+  .nav-item:hover{ background:var(--panel-2); color:var(--text); }
+  .nav-item.active{ background:linear-gradient(90deg, var(--red-dim), transparent); color:#fff; border-color:var(--line); }
+
+  .side-footer{ margin-top:14px; padding-top:14px; border-top:1px solid var(--line-soft); }
+  .mini-wave{ display:flex; align-items:flex-end; gap:3px; height:22px; margin-bottom:10px; }
+  .mini-wave span{
+    flex:1; background:var(--red); border-radius:1px;
+    height:30%;
+    animation: wave-idle 1.6s ease-in-out infinite;
+    opacity:.75;
+  }
+  .mini-wave span:nth-child(1){ animation-delay:0s; }
+  .mini-wave span:nth-child(2){ animation-delay:.15s; }
+  .mini-wave span:nth-child(3){ animation-delay:.3s; }
+  .mini-wave span:nth-child(4){ animation-delay:.45s; }
+  .mini-wave span:nth-child(5){ animation-delay:.6s; }
+  @keyframes wave-idle{ 0%,100%{ height:20%; } 50%{ height:80%; } }
+  #app[data-state="listening"] .mini-wave span,
+  #app[data-state="speaking"] .mini-wave span{ animation-duration:.5s; opacity:1; }
+  .status-row{ display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text-dim); letter-spacing:.03em; margin-bottom:6px; }
+
+  /* ---------- right panel ---------- */
+  .rightpanel{
+    width:270px; flex-shrink:0;
+    border-left:1px solid var(--line);
+    padding:18px 16px;
+    display:flex; flex-direction:column; gap:14px;
+    position:fixed; top:0; bottom:0; right:0; z-index:40;
+    transform:translateX(100%);
+    transition:transform .22s ease;
+    overflow-y:auto;
+    background:var(--bg);
+  }
+  .rightpanel.open{ transform:translateX(0); }
+  .panel-card{ padding:14px 14px 16px; }
+  .panel-card h3{
+    font-size:11px; letter-spacing:.1em; color:var(--text-dim); font-family:var(--font-body); font-weight:700; margin-bottom:10px;
+  }
+  .ring-progress-wrap{ position:relative; width:104px; height:104px; margin:4px auto 8px; }
+  .ring-progress{ position:absolute; inset:0; border-radius:50%; background:conic-gradient(var(--red) 0%, rgba(255,255,255,.08) 0%); transition:background .4s ease; }
+  .ring-progress-hole{
+    position:absolute; inset:9px; border-radius:50%; background:var(--panel);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--text);
+  }
+  .panel-note{ text-align:center; font-size:11px; letter-spacing:.05em; color:var(--text-dim); margin:0; }
+
+  .tools-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tools-grid button{
+    background:var(--panel-2); border:1px solid var(--line-soft); color:var(--text);
+    padding:10px 6px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    font-size:10.5px; letter-spacing:.02em; color:var(--text-dim);
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .tools-grid button .icon{ width:17px; height:17px; }
+  .tools-grid button.on{ color:#fff; border-color:var(--line); background:linear-gradient(180deg, var(--red-dim), var(--panel-2)); }
+
+  /* ---------- holograma do protótipo real (tampa verde + tubo + fio) ---------- */
+  .holo-stage{ position:relative; perspective:700px; height:160px; overflow:visible; }
+  .holo-stage .hp, .holo-stage .holo-spin, .holo-stage .holo-float{ position:absolute; left:0; top:0; width:0; height:0; transform-style:preserve-3d; }
+  .holo-stage i{ position:absolute; display:block; font-style:normal; }
+  .holo-stage .holo-float{ left:50%; top:50%; animation:holo-bob 3.8s ease-in-out infinite; }
+  @keyframes holo-bob{ 0%,100%{ transform:translateY(-3px); } 50%{ transform:translateY(4px); } }
+  .holo-spin{ animation:holo-spin 11s linear infinite; }
+  @keyframes holo-spin{ from{ transform:rotateX(-20deg) rotateY(0deg); } to{ transform:rotateX(-20deg) rotateY(360deg); } }
+
+  .cap-side{ border:1px solid rgba(130,255,200,.55); }
+  .cap-side.a{ background:linear-gradient(180deg, rgba(60,235,150,.46), rgba(30,170,105,.30)); }
+  .cap-side.b{ background:linear-gradient(180deg, rgba(40,200,125,.32), rgba(25,140,90,.20)); }
+  .cap-top{
+    border-radius:50%; border:1px solid rgba(150,255,210,.8);
+    background:radial-gradient(circle,
+      rgba(190,60,70,.85) 0 26%, rgba(120,255,225,.70) 28% 34%, rgba(45,175,150,.30) 36% 52%,
+      rgba(120,255,225,.60) 54% 60%, rgba(45,175,150,.26) 62% 80%, rgba(150,255,215,.75) 82% 90%, rgba(50,200,130,.40) 92%);
+    box-shadow:0 0 10px rgba(70,255,170,.45);
+  }
+  .cap-open{
+    border-radius:50%; border:2px solid rgba(110,255,185,.75);
+    background:radial-gradient(circle, rgba(10,70,50,.28) 0 66%, rgba(60,240,160,.35) 100%);
+  }
+  .rod{ background:rgba(225,235,240,.62); border:1px solid rgba(255,255,255,.8); }
+  .tube-side{ background:linear-gradient(180deg, rgba(190,230,255,.20), rgba(140,200,255,.08)); border-top:1px solid rgba(210,240,255,.55); border-bottom:1px solid rgba(210,240,255,.20); }
+  .tube-ring{ border-radius:50%; border:1px solid rgba(215,242,255,.75); }
+  .tube-mouth{ border-width:2px; box-shadow:0 0 8px rgba(190,235,255,.7); }
+  .coil{ border-radius:50%; border:1px solid rgba(255,255,255,.88); }
+  .tab{ background:rgba(45,80,255,.68); border:1px solid rgba(150,175,255,.95); box-shadow:0 0 8px rgba(70,100,255,.8); }
+  .yarn{ background:rgba(255,255,255,.92); box-shadow:0 0 5px rgba(255,255,255,.75); border-radius:2px; }
+  .yarn.tuft{ border-radius:50%; }
+
+  .holo-base{ position:absolute; left:50%; bottom:6px; width:132px; height:30px; margin-left:-66px; }
+  .holo-base span{ position:absolute; inset:0; border-radius:50%; border:1px solid var(--red-2); box-shadow:0 0 14px rgba(255,77,77,.55), inset 0 0 12px rgba(224,32,44,.45); }
+  .holo-base span + span{ inset:6px 20px; border-color:rgba(255,77,77,.55); box-shadow:none; animation:holo-ring 2.6s ease-in-out infinite; }
+  @keyframes holo-ring{ 0%,100%{ opacity:.35; } 50%{ opacity:1; } }
+  .holo-beam{
+    position:absolute; left:50%; bottom:20px; width:116px; height:104px; margin-left:-58px;
+    background:linear-gradient(0deg, rgba(255,77,77,.26), rgba(255,77,77,0));
+    clip-path:polygon(18% 100%, 82% 100%, 100% 0, 0 0);
+  }
+  .holo-scan{ position:absolute; inset:0; pointer-events:none; overflow:hidden;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.055) 0 1px, transparent 1px 3px); }
+  .holo-scan::after{ content:''; position:absolute; left:0; right:0; height:34px; top:-34px;
+    background:linear-gradient(180deg, transparent, rgba(255,120,120,.16), transparent); animation:holo-sweep 3.6s linear infinite; }
+  @keyframes holo-sweep{ to{ transform:translateY(200px); } }
+  @media (prefers-reduced-motion: reduce){
+    .holo-float, .holo-scan::after, .holo-base span + span{ animation:none; }
+    .holo-spin{ animation-duration:40s; }
+  }
+
+  /* ---------- main ---------- */
+  .main{ flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
+  .main-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px 0;
+    flex-shrink:0;
+  }
+  .mode-chip{
+    display:inline-flex; align-items:center; gap:7px;
+    border:1px solid var(--line); background:var(--panel);
+    padding:5px 12px; font-size:11px; letter-spacing:.09em; color:var(--text-dim); font-weight:600;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .model-chip{ font-size:10.5px; color:var(--text-dim); letter-spacing:.03em; }
+
+  .chat-view{ flex:1; display:flex; flex-direction:column; min-height:0; }
+  .hud-view{ display:none; }
+  #app[data-mainview="hud"] .chat-view{ display:none; }
+  #app[data-mainview="hud"] .hud-view{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+    flex:1; min-height:0; overflow-y:auto; padding:20px;
+  }
+  #app[data-mainview="hud"] .rightpanel{ display:none; }
+  #app[data-mainview="hud"] #btn-stats-toggle{ display:none; }
+
+  /* ---- modo HUD limpo: só o símbolo + nome IRIS, clima no canto superior direito ---- */
+  #app[data-mainview="hud"] .sidebar,
+  #app[data-mainview="hud"] .mobile-bar,
+  #app[data-mainview="hud"] .main-topbar,
+  #app[data-mainview="hud"] .composer,
+  #app[data-mainview="hud"] .scrim{ display:none !important; }
+  .main{ position:relative; }
+  .hud-controls{
+    display:none;
+    position:absolute; left:50%; bottom:calc(22px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+    z-index:5; gap:18px; align-items:center;
+  }
+  #app[data-mainview="hud"] .hud-controls{ display:flex; }
+  .hud-btn{
+    width:54px; height:54px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line); color:var(--text-dim);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; cursor:pointer; padding:0; position:relative;
+  }
+  .hud-btn:active{ background:var(--panel-2); }
+  .hud-btn.on{ background:var(--red); border-color:var(--red); color:#fff; box-shadow:0 0 18px rgba(224,32,44,.45); }
+  .hud-btn .mic-slash{ display:none; position:absolute; width:30px; height:2px; background:var(--red-2); transform:rotate(-45deg); border-radius:2px; }
+  .hud-btn:not(.on) .mic-slash{ display:block; }
+  .hud-weather{
+    display:none;
+    position:absolute; top:14px; right:16px; z-index:5;
+    align-items:center; gap:10px;
+    padding:9px 16px 9px 12px;
+    background:var(--panel); border:1px solid var(--line);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  #app[data-mainview="hud"] .hud-weather{ display:flex; }
+  .hud-weather-icon{ font-size:28px; color:var(--red-2); display:flex; }
+  .hud-weather-text{ display:flex; flex-direction:column; line-height:1.15; }
+  .hud-weather-text b{ font-size:20px; font-weight:700; color:#fff; }
+  .hud-weather-text span{ font-size:11.5px; color:var(--text); }
+  .hud-weather-text em{ font-style:normal; font-size:10px; color:var(--text-dim); letter-spacing:.06em; margin-top:2px; }
+
+  .hud-stage{ position:relative; width:300px; height:300px; max-width:80vw; max-height:80vw; flex-shrink:0; }
+  .hud-ring-wrap{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:230px; height:230px;
+  }
+  .hud-ticks{
+    position:absolute; inset:0; border-radius:50%;
+    background: repeating-conic-gradient(var(--red) 0deg 2deg, transparent 2deg 9deg);
+    -webkit-mask: radial-gradient(circle, transparent 94px, #000 97px, #000 113px, transparent 116px);
+            mask: radial-gradient(circle, transparent 94px, #000 97px, #000 113px, transparent 116px);
+    opacity:.85;
+    animation: hud-ticks-spin 44s linear infinite;
+  }
+  @keyframes hud-ticks-spin{ to{ transform:rotate(360deg); } }
+  .hud-arc{
+    position:absolute; inset:23px; border-radius:50%;
+    border:3px solid transparent;
+    border-top-color:var(--red-2); border-right-color:var(--red-2);
+    opacity:.75;
+    animation: hud-arc-spin 3.4s linear infinite;
+  }
+  @keyframes hud-arc-spin{ to{ transform:rotate(360deg); } }
+  .hud-core{
+    position:absolute; inset:56px; border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, #1c0507, #08070a 70%);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 26px rgba(224,32,44,.3) inset;
+    transition:box-shadow .3s ease;
+  }
+  .hud-title{
+    font-family:var(--font-display); font-weight:800; font-size:22px; letter-spacing:.14em; color:#fff;
+    text-shadow:0 0 10px var(--red); transition:transform .18s ease, text-shadow .18s ease;
+  }
+  #app[data-state="listening"] .hud-title, #app[data-state="speaking"] .hud-title{ animation: hud-pulse .55s ease-in-out infinite; }
+  @keyframes hud-pulse{ 0%,100%{ transform:scale(1); text-shadow:0 0 10px var(--red); } 50%{ transform:scale(1.14); text-shadow:0 0 24px var(--red-2); } }
+  #app[data-state="listening"] .hud-arc, #app[data-state="speaking"] .hud-arc{ animation-duration:.9s; }
+  #app[data-state="thinking"] .hud-core{ animation: hud-think-glow 1s ease-in-out infinite; }
+  @keyframes hud-think-glow{ 0%,100%{ box-shadow:0 0 26px rgba(224,32,44,.3) inset; } 50%{ box-shadow:0 0 46px rgba(224,32,44,.65) inset; } }
+
+  /* dados flutuando ao redor do anel, só aparecem quando há algo pra mostrar */
+  .hud-float{
+    position:absolute; opacity:0; transform:scale(.6);
+    transition:opacity .35s ease, transform .35s ease;
+    pointer-events:none;
+  }
+  .hud-float.show{ opacity:1; transform:scale(1); }
+  .hud-float-stat{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:7px 12px; text-align:center; min-width:64px;
+  }
+  .hud-float-stat b{ display:block; font-size:17px; color:#fff; font-weight:700; }
+  .hud-float-stat span{ font-size:9px; color:var(--text-dim); letter-spacing:.04em; }
+  .hud-stat-a{ bottom:6px; left:-16px; }
+  .hud-stat-b{ bottom:-10px; right:6px; }
+
+  /* showcase grande da imagem (Wikipédia) */
+  .hud-showcase{
+    position:relative; width:100%; max-width:300px; aspect-ratio:1/1; max-height:0;
+    opacity:0; transform:scale(.88); overflow:hidden;
+    transition:opacity .45s ease, transform .45s ease, max-height .45s ease;
+    pointer-events:none; flex-shrink:0;
+  }
+  .hud-showcase.show{ opacity:1; transform:scale(1); max-height:340px; overflow:visible; }
+
+  .hud-holo-big{
+    position:relative; width:100%; max-width:340px; height:0; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transform:scale(.88); flex-shrink:0;
+    transition:opacity .5s ease, transform .5s ease, height .5s ease;
+    pointer-events:none;
+  }
+  .hud-holo-big.show{ opacity:1; transform:scale(1); height:320px; overflow:visible; }
+  .hud-holo-big .holo-stage{ transform:scale(2.3); transform-origin:center center; }
+  .hud-showcase-frame{
+    position:absolute; inset:0; border-radius:20px; overflow:hidden;
+    border:2px solid var(--red); background:#050405;
+    box-shadow:0 0 40px rgba(224,32,44,.4), 0 0 0 1px rgba(224,32,44,.15);
+    perspective:700px;
+  }
+  .hud-showcase-frame img{
+    width:100%; height:100%; object-fit:cover; display:block;
+    animation: hud-showcase-wobble 6s ease-in-out infinite;
+  }
+  @keyframes hud-showcase-wobble{
+    0%,100%{ transform:scale(1.08) rotateY(-5deg) rotateX(1.5deg); }
+    50%{ transform:scale(1.08) rotateY(5deg) rotateX(-1.5deg); }
+  }
+  .hud-showcase-scan{
+    position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0px, rgba(255,255,255,.04) 1px, transparent 1px, transparent 3px);
+  }
+  .hud-showcase-vignette{
+    position:absolute; inset:0; pointer-events:none; border-radius:20px;
+    box-shadow: inset 0 0 50px rgba(0,0,0,.65);
+    background:radial-gradient(circle at 50% 40%, transparent 55%, rgba(224,32,44,.18) 100%);
+  }
+  .hud-corner{
+    position:absolute; width:22px; height:22px; border-color:var(--red-2); opacity:.9;
+  }
+  .hud-corner-tl{ top:-6px; left:-6px; border-top:2px solid; border-left:2px solid; }
+  .hud-corner-tr{ top:-6px; right:-6px; border-top:2px solid; border-right:2px solid; }
+  .hud-corner-bl{ bottom:-6px; left:-6px; border-bottom:2px solid; border-left:2px solid; }
+  .hud-corner-br{ bottom:-6px; right:-6px; border-bottom:2px solid; border-right:2px solid; }
+
+  .hud-caption{
+    text-align:center; font-size:13px; color:var(--text-dim); line-height:1.55;
+    max-width:360px; opacity:0; height:0; overflow:hidden; transition:opacity .4s ease;
+  }
+  .hud-caption.show{ opacity:1; height:auto; }
+  .hud-caption b{ color:#fff; }
+
+  .hero{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:10px 20px; text-align:center; overflow-y:auto;
+  }
+  .iris-wrap{
+    position:relative; width:180px; height:180px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%; clip-path:none; border:none; background:none;
+    margin-bottom:18px;
+  }
+  .ring{ position:absolute; border-radius:50%; transition:transform .12s ease-out, opacity .3s ease; }
+  .ring-outer{
+    width:180px; height:180px;
+    background:conic-gradient(from 0deg, var(--red), #3a0a0d, var(--red-2), #3a0a0d, var(--red));
+    animation: idle-breathe 3.6s ease-in-out infinite;
+  }
+  .ring-outer::after{ content:''; position:absolute; inset:7px; border-radius:50%; background:var(--bg); }
+  .ring-mid{
+    width:124px; height:124px;
+    background:radial-gradient(circle at 38% 32%, rgba(255,77,77,.55), rgba(224,32,44,.22) 60%, transparent 75%);
+    animation: idle-breathe 3.6s ease-in-out infinite .2s;
+  }
+  .ring-core{
+    width:58px; height:58px;
+    background:radial-gradient(circle at 40% 35%, #fff, var(--red-2) 45%, var(--red-dim) 100%);
+    box-shadow:0 0 26px rgba(224,32,44,.6);
+  }
+  @keyframes idle-breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.045); } }
+  #app[data-state="listening"] .ring-outer{ animation:none; transform:scale(calc(1 + var(--vol, 0) * 0.22)); }
+  #app[data-state="listening"] .ring-mid{ animation:none; transform:scale(calc(1 + var(--vol, 0) * 0.32)); }
+  #app[data-state="thinking"] .ring-outer{ animation:spin 1s linear infinite; }
+  #app[data-state="thinking"] .ring-mid{ animation:pulse-soft 1s ease-in-out infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes pulse-soft{ 0%,100%{opacity:.6;} 50%{opacity:1;} }
+  #app[data-state="speaking"] .ring-outer{ animation:speak-pulse .5s ease-in-out infinite; }
+  #app[data-state="speaking"] .ring-mid{ animation:speak-pulse .5s ease-in-out infinite .08s; }
+  @keyframes speak-pulse{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.08);} }
+
+  .hero h2{ font-size:26px; letter-spacing:.01em; color:var(--text); margin-bottom:6px; }
+  #status-text{ margin:0 0 20px; font-size:13.5px; color:var(--text-dim); min-height:16px; }
+
+  .quick-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:480px; }
+  .quick-card{
+    display:flex; align-items:center; gap:10px;
+    background:var(--panel); border:1px solid var(--line-soft); color:var(--text);
+    padding:13px 14px; font-size:13.5px; font-weight:600; text-align:left; cursor:pointer;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .quick-card:active{ background:var(--panel-2); }
+  .quick-card .icon{ width:18px; height:18px; }
+
+  /* ---------- transcript ---------- */
+  .transcript{
+    flex:1; display:none; flex-direction:column; gap:10px;
+    overflow-y:auto; padding:14px 20px;
+    -webkit-overflow-scrolling:touch;
+  }
+  #app.has-messages .transcript{ display:flex; }
+  #app.has-messages .hero{ display:none; }
+  .msg{ max-width:82%; padding:11px 16px; font-size:14.5px; line-height:1.42; white-space:pre-wrap; border-radius:20px; }
+  .msg.iris{ align-self:flex-start; background:var(--panel); border:1px solid var(--line-soft); border-left:2px solid var(--red); border-bottom-left-radius:6px; }
+  .msg.user{ align-self:flex-end; background:linear-gradient(135deg, var(--red-dim), var(--red)); color:#fff; border-bottom-right-radius:6px; }
+  .msg.system{ align-self:center; color:var(--text-dim); font-size:12.5px; background:transparent; border:1px dashed var(--line); border-radius:14px; }
+  .transcript::-webkit-scrollbar{ width:5px; }
+  .transcript::-webkit-scrollbar-thumb{ background:var(--panel-2); }
+
+  /* ---------- composer ---------- */
+  .composer{
+    flex-shrink:0; margin:10px 20px calc(14px + env(safe-area-inset-bottom));
+    padding:12px 14px 14px;
+    clip-path:none; border-radius:16px 16px 0 0; border:1px solid var(--line); border-bottom:none;
+    background:var(--panel);
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .text-row{ display:flex; gap:8px; }
+  .text-row input[type="text"]{
+    flex:1; background:var(--panel-2); border:1px solid var(--line-soft); color:var(--text);
+    border-radius:999px; padding:11px 16px; font-size:14.5px;
+  }
+  .text-row input[type="text"]:focus{ outline:1px solid var(--red); outline-offset:1px; }
+  .icon-send{
+    width:42px; height:42px; border-radius:50%; border:none; background:var(--red); color:#fff;
+    font-size:16px; cursor:pointer; flex-shrink:0;
+  }
+  .icon-send:active{ background:var(--red-dim); }
+
+  .btn-row{ display:flex; align-items:center; justify-content:center; gap:14px; }
+  .mic-btn{
+    width:60px; height:60px; border-radius:50%; border:none; background:var(--red); color:#fff;
+    font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  #app[data-state="listening"] .mic-btn{ animation:mic-glow 1.4s ease-in-out infinite; }
+  @keyframes mic-glow{ 0%,100%{ box-shadow:0 0 0 0 rgba(224,32,44,.5); } 50%{ box-shadow:0 0 0 14px rgba(224,32,44,0); } }
+  .side-btn{
+    width:44px; height:44px; border-radius:50%; border:1px solid var(--line-soft); background:var(--panel-2);
+    color:var(--text-dim); font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .wake-row{ display:flex; align-items:center; justify-content:center; gap:8px; font-size:11.5px; color:var(--text-dim); letter-spacing:.02em; }
+  .switch{ position:relative; width:36px; height:20px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{ position:absolute; inset:0; background:var(--panel-2); border:1px solid var(--line-soft); border-radius:999px; cursor:pointer; transition:.2s; }
+  .slider::before{ content:''; position:absolute; width:14px; height:14px; left:2px; top:2px; background:var(--text-dim); border-radius:50%; transition:.2s; }
+  .switch input:checked + .slider{ background:var(--red); border-color:var(--red); }
+  .switch input:checked + .slider::before{ transform:translateX(15px); background:#fff; }
+
+  /* ===================== DRAWERS (memory/settings/about) ===================== */
+  .scrim{ position:fixed; inset:0; background:rgba(4,3,4,.6); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:45; }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+  .drawer{
+    position:fixed; left:0; right:0; bottom:0; max-width:560px; margin:0 auto;
+    max-height:82%; background:var(--panel); border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0; transform:translateY(100%); transition:transform .25s ease;
+    z-index:46; display:flex; flex-direction:column;
+  }
+  .drawer.open{ transform:translateY(0); }
+  .drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:16px 18px 6px; }
+  .drawer-head h2{ font-size:15px; letter-spacing:.05em; color:var(--red-2); font-weight:700; }
+  .drawer-body{ padding:6px 18px 24px; overflow-y:auto; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:11.5px; color:var(--text-dim); margin-bottom:5px; letter-spacing:.03em; }
+  .field input[type="text"], .field input[type="password"], .field select{
+    width:100%; background:var(--panel-2); border:1px solid var(--line-soft); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:14px;
+  }
+  .field small{ display:block; margin-top:5px; color:var(--text-dim); font-size:11px; line-height:1.4; }
+  .field small a{ color:var(--red-2); }
+  .range-row{ display:flex; align-items:center; gap:10px; }
+  .range-row input[type="range"]{ flex:1; accent-color:var(--red); }
+  .divider{ border:none; border-top:1px solid var(--line-soft); margin:16px 0; }
+  .ghost-btn{
+    width:100%; background:transparent; border:1px solid var(--line-soft); color:var(--text);
+    padding:11px; border-radius:8px; font-size:13.5px; cursor:pointer; margin-bottom:8px; letter-spacing:.02em;
+  }
+  .ghost-btn.danger{ color:var(--red-2); border-color:rgba(224,32,44,.4); }
+  .mem-add-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .mem-add-row input{ flex:1; background:var(--panel-2); border:1px solid var(--line-soft); color:var(--text); border-radius:8px; padding:10px 12px; font-size:14px; }
+  .mem-add-row button{ background:var(--red); color:#fff; border:none; border-radius:8px; padding:0 16px; font-weight:600; cursor:pointer; }
+  .mem-item{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; background:var(--panel-2); border:1px solid var(--line-soft); border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:13.5px; line-height:1.4; }
+  .mem-item button{ background:none; border:none; color:var(--text-dim); font-size:16px; cursor:pointer; flex-shrink:0; }
+  .mem-empty{ color:var(--text-dim); font-size:13px; text-align:center; padding:18px 0; }
+  .about-line{ margin-bottom:12px; font-size:14px; }
+  .about-line b{ color:var(--red-2); display:block; font-size:11px; letter-spacing:.05em; margin-bottom:2px; }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 899px){
+    .mobile-bar{ display:flex; }
+    .sidebar, .rightpanel{ box-shadow:0 0 40px rgba(0,0,0,.6); }
+  }
+  @media (min-width: 900px){
+    .sidebar{ position:relative; transform:none !important; }
+    .rightpanel{ position:relative; transform:none !important; }
+    .scrim{ display:none; }
+  }
+
+  /* ---------- tradutor de Libras (câmera) ---------- */
+  #libras{ display:none; position:fixed; inset:0; z-index:200; background:var(--bg,#0a0709); flex-direction:column; padding:12px; gap:10px; }
+  #libras.open{ display:flex; }
+  .lb-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .lb-top h3{ font-size:13px; letter-spacing:.14em; color:#fff; }
+  .lb-video{ position:relative; flex:1; min-height:0; background:#000; border:1px solid var(--line); overflow:hidden; }
+  .lb-video video, .lb-video canvas{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; transform:scaleX(-1); }
+  .lb-live{ position:absolute; left:12px; bottom:12px; font-size:44px; font-weight:700; color:#fff; text-shadow:0 0 14px var(--red-2); }
+  .lb-out{ min-height:48px; padding:10px 14px; background:var(--panel); border:1px solid var(--line); font-size:22px; color:#fff; word-break:break-word; }
+  .lb-bar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .lb-btn{ padding:10px 14px; background:var(--panel); border:1px solid var(--line); color:var(--text); font:inherit; font-size:13px; cursor:pointer; }
+  .lb-btn.on{ background:var(--red); border-color:var(--red); color:#fff; }
+  .lb-bar input{ flex:1; min-width:120px; padding:10px; background:var(--panel); border:1px solid var(--line); color:#fff; font:inherit; }
+  .lb-stat{ font-size:11.5px; color:var(--text-dim); }
+</style>
+</head>
+<body>
+<div id="app" data-state="idle">
+
+  <div class="mobile-bar">
+    <button class="hud-icon-btn" id="btn-nav-toggle" aria-label="Menu">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="mobile-title">IRIS OS</span>
+    <div class="mobile-actions">
+      <button class="hud-icon-btn" id="btn-stats-toggle" aria-label="Painel">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="shell">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="aperture-logo">
+          <img src="logoatualizada2.png" alt="Logo IRIS" style="width:100%;height:100%;object-fit:contain;">
+        </div>
+        <h1>IRIS <span class="ver">IA</span></h1>
+        <p>Assistente da feira de ciências</p>
+      </div>
+
+      <nav class="side-nav">
+        <button class="nav-item active" id="nav-chat" data-view="chat"><svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6A8.4 8.4 0 0 1 12.5 3h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg> CHAT</button>
+        <button class="nav-item" id="nav-hud" data-view="hud"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/></svg> HUD</button>
+        <button class="nav-item" id="nav-libras"><svg class="icon" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-5.9-2.4L3.4 16a2 2 0 0 1 3.2-2.4L8 15"/></svg><span>LIBRAS</span></button>
+        <button class="nav-item" id="nav-memory"><svg class="icon" viewBox="0 0 24 24"><path d="M9.5 2A3.5 3.5 0 0 0 6 5.5c0 .3 0 .6.1.9A3.5 3.5 0 0 0 4 9.5 3.5 3.5 0 0 0 5.7 12.4 3.5 3.5 0 0 0 4 15.5 3.5 3.5 0 0 0 7.5 19c.2 0 .4 0 .6-.1A3.5 3.5 0 0 0 9.5 22h1a1.5 1.5 0 0 0 1.5-1.5v-17A1.5 1.5 0 0 0 10.5 2h-1z"/><path d="M14.5 2A3.5 3.5 0 0 1 18 5.5c0 .3 0 .6-.1.9A3.5 3.5 0 0 1 20 9.5a3.5 3.5 0 0 1-1.7 2.9A3.5 3.5 0 0 1 20 15.5 3.5 3.5 0 0 1 16.5 19c-.2 0-.4 0-.6-.1A3.5 3.5 0 0 1 14.5 22h-1a1.5 1.5 0 0 1-1.5-1.5v-17A1.5 1.5 0 0 1 13.5 2h1z"/></svg> MEMÓRIA</button>
+        <button class="nav-item" id="nav-settings"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.13.32.2.66.2 1v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> CONFIGURAÇÕES</button>
+        <button class="nav-item" id="nav-about"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r=".2" fill="currentColor" stroke="none"/></svg> SOBRE</button>
+      </nav>
+
+      <div class="side-footer">
+        <div class="mini-wave" id="mini-wave"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="status-row"><i class="dot" id="dot-online"></i> <span id="txt-online">SISTEMA ONLINE</span></div>
+        <div class="status-row"><i class="dot" id="dot-mic"></i> <span id="txt-mic-status">VERIFICANDO MIC...</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="hud-weather" id="hud-weather">
+        <span class="hud-weather-icon" id="hud-weather-icon"></span>
+        <div class="hud-weather-text">
+          <b id="hud-weather-temp">--°C</b>
+          <span id="hud-weather-desc">Carregando clima...</span>
+          <em>JARDIM INGÁ</em>
+        </div>
+      </div>
+      <div class="main-topbar">
+        <span class="mode-chip"><i class="dot pulse"></i> MODO CONVERSA</span>
+        <span class="model-chip" id="model-chip">openai/gpt-oss-120b</span>
+      </div>
+
+      <div class="chat-view" id="chat-view">
+        <div class="hero" id="hero">
+          <div class="iris-wrap">
+            <div class="ring ring-outer"></div>
+            <div class="ring ring-mid"></div>
+            <div class="ring ring-core"></div>
+          </div>
+          <h2>Olá, como posso ajudar?</h2>
+          <p id="status-text">Diga "Iris" ou toque no microfone</p>
+          <div class="quick-grid">
+            <button class="quick-card" data-action="fill" data-text="Pode me explicar sobre "><svg class="icon" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.5.4.8 1 .8 1.6V17h6.4v-.7c0-.6.3-1.2.8-1.6A7 7 0 0 0 12 2z"/></svg> Explicar um conceito</button>
+            <button class="quick-card" data-action="send" data-text="Me conte uma curiosidade científica interessante"><svg class="icon" viewBox="0 0 24 24"><path d="M9 2v6L3.5 18a2 2 0 0 0 1.8 3h13.4a2 2 0 0 0 1.8-3L15 8V2"/><line x1="8" y1="2" x2="16" y2="2"/><line x1="8.5" y1="14" x2="15.5" y2="14"/></svg> Curiosidade científica</button>
+            <button class="quick-card" data-action="send" data-text="Fale sobre o seu projeto da feira de ciências"><svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Sobre o projeto</button>
+            <button class="quick-card" data-action="send" data-text="Como eu faço para falar com você por voz?"><svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> Como falar comigo</button>
+          </div>
+        </div>
+
+        <div class="transcript" id="transcript"></div>
+      </div>
+
+      <div class="hud-view" id="hud-view">
+        <div class="hud-stage" id="hud-stage">
+          <div class="hud-ring-wrap">
+            <div class="hud-ticks"></div>
+            <div class="hud-arc"></div>
+            <div class="hud-core">
+              <span class="hud-title">IRIS</span>
+            </div>
+          </div>
+
+          <div class="hud-float hud-float-stat hud-stat-a" id="hud-stat-a"><b id="hud-stat-a-val"></b><span id="hud-stat-a-label"></span></div>
+          <div class="hud-float hud-float-stat hud-stat-b" id="hud-stat-b"><b id="hud-stat-b-val"></b><span id="hud-stat-b-label"></span></div>
+        </div>
+
+        <div class="hud-showcase" id="hud-showcase">
+          <div class="hud-showcase-frame">
+            <img id="hud-showcase-img" src="" alt="">
+            <div class="hud-showcase-scan"></div>
+            <div class="hud-showcase-vignette"></div>
+          </div>
+          <span class="hud-corner hud-corner-tl"></span>
+          <span class="hud-corner hud-corner-tr"></span>
+          <span class="hud-corner hud-corner-bl"></span>
+          <span class="hud-corner hud-corner-br"></span>
+        </div>
+
+        <div class="hud-holo-big" id="hud-holo-big"></div>
+
+        <p class="hud-caption" id="hud-caption"></p>
+      </div>
+
+      <div class="hud-controls" id="hud-controls">
+        <button class="hud-btn" id="hud-btn-back" title="Voltar ao início" aria-label="Voltar ao início">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+        </button>
+        <button class="hud-btn" id="hud-btn-mic" title="Ativar/desativar microfone" aria-label="Ativar ou desativar microfone">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <span class="mic-slash"></span>
+        </button>
+      </div>
+
+      <div class="composer">
+        <div class="text-row">
+          <input type="text" id="text-input" placeholder="Digite sua mensagem..." autocomplete="off">
+          <button class="icon-send" id="btn-send" aria-label="Enviar"><svg class="icon" viewBox="0 0 24 24" style="stroke:#fff;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+        <div class="btn-row">
+          <button class="side-btn" id="btn-clear" title="Limpar conversa" aria-label="Limpar conversa"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+          <button class="mic-btn" id="btn-mic" title="Falar" aria-label="Falar"><svg class="icon" viewBox="0 0 24 24" style="stroke:#fff;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+          <button class="side-btn" id="btn-stop" title="Parar fala" aria-label="Parar fala"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg></button>
+        </div>
+        <label class="wake-row">
+          <span class="switch"><input type="checkbox" id="wake-toggle"><span class="slider"></span></span>
+          <span id="wake-label">Ativar palavra-chave "Iris" (escuta contínua)</span>
+        </label>
+      </div>
+    </main>
+
+    <aside class="rightpanel" id="rightpanel">
+      <div class="panel-card hud-frame">
+        <h3>STATUS DO SISTEMA</h3>
+        <div class="ring-progress-wrap">
+          <div class="ring-progress" id="ring-progress"></div>
+          <div class="ring-progress-hole"><span id="ring-progress-val">0%</span></div>
+        </div>
+        <p class="panel-note" id="readiness-note">Verificando...</p>
+      </div>
+
+      <div class="panel-card hud-frame">
+        <h3>FERRAMENTAS RÁPIDAS</h3>
+        <div class="tools-grid">
+          <button data-tool="wake"><svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span>Voz contínua</span></button>
+          <button data-tool="test-voice"><svg class="icon" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg><span>Testar voz</span></button>
+          <button data-tool="stop"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg><span>Parar fala</span></button>
+          <button data-tool="clear"><svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg><span>Limpar</span></button>
+          <button data-tool="memory"><svg class="icon" viewBox="0 0 24 24"><path d="M9.5 2A3.5 3.5 0 0 0 6 5.5c0 .3 0 .6.1.9A3.5 3.5 0 0 0 4 9.5 3.5 3.5 0 0 0 5.7 12.4 3.5 3.5 0 0 0 4 15.5 3.5 3.5 0 0 0 7.5 19c.2 0 .4 0 .6-.1A3.5 3.5 0 0 0 9.5 22h1a1.5 1.5 0 0 0 1.5-1.5v-17A1.5 1.5 0 0 0 10.5 2h-1z"/><path d="M14.5 2A3.5 3.5 0 0 1 18 5.5c0 .3 0 .6-.1.9A3.5 3.5 0 0 1 20 9.5a3.5 3.5 0 0 1-1.7 2.9A3.5 3.5 0 0 1 20 15.5 3.5 3.5 0 0 1 16.5 19c-.2 0-.4 0-.6-.1A3.5 3.5 0 0 1 14.5 22h-1a1.5 1.5 0 0 1-1.5-1.5v-17A1.5 1.5 0 0 1 13.5 2h1z"/></svg><span>Memória</span></button>
+          <button data-tool="settings"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.13.32.2.66.2 1v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Config</span></button>
+        </div>
+      </div>
+
+      <div class="panel-card hud-frame">
+        <h3>PROTÓTIPO: LANÇADOR DE TEIA</h3>
+        <div class="holo-stage" id="launcher-holo-source" aria-hidden="true">
+          <div class="holo-beam"></div><div class="holo-base"><span></span><span></span></div>
+          <div class="holo-float"><div class="holo-spin"><div class="hp" style="transform:translateX(-43px)">
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(0deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(22.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(45deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(67.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(90deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(112.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(135deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(157.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(180deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(202.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(225deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(247.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(270deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(292.5deg) translateZ(19.62px)"></i>
+          <i class="cap-side a" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(315deg) translateZ(19.62px)"></i>
+          <i class="cap-side b" style="width:8.31px;height:16px;left:-4.15px;top:-8px;transform:rotateY(337.5deg) translateZ(19.62px)"></i>
+          <i class="cap-top" style="width:40px;height:40px;left:-20px;top:-20px;transform:translateY(-8px) rotateX(90deg)"></i>
+          <i class="cap-open" style="width:40px;height:40px;left:-20px;top:-20px;transform:translateY(8px) rotateX(90deg)"></i>
+          <div class="hp" style="transform:translate3d(4px,-0.3px,-1.5px)">
+          <i class="rod" style="width:24px;height:2.6px;left:-12px;top:-1.3px;transform:translateZ(1.3px)"></i>
+          <i class="rod" style="width:24px;height:2.6px;left:-12px;top:-1.3px;transform:rotateY(180deg) translateZ(1.3px)"></i>
+          <i class="rod" style="width:2.6px;height:2.6px;left:-1.3px;top:-1.3px;transform:rotateY(90deg) translateZ(12px)"></i>
+          <i class="rod" style="width:2.6px;height:2.6px;left:-1.3px;top:-1.3px;transform:rotateY(-90deg) translateZ(12px)"></i>
+          <i class="rod" style="width:24px;height:2.6px;left:-12px;top:-1.3px;transform:rotateX(90deg) translateZ(1.3px)"></i>
+          <i class="rod" style="width:24px;height:2.6px;left:-12px;top:-1.3px;transform:rotateX(-90deg) translateZ(1.3px)"></i>
+          </div>
+          <div class="hp" style="transform:translate3d(21px,-3.5px,0)">
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(0deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(45deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(90deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(135deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(180deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(225deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(270deg) translateZ(3.88px)"></i>
+          <i class="tube-side" style="width:50px;height:3.68px;left:-25px;top:-1.84px;transform:rotateX(315deg) translateZ(3.88px)"></i>
+          <i class="tube-ring" style="width:8.4px;height:8.4px;left:-4.2px;top:-4.2px;transform:translateX(-25px) rotateY(90deg)"></i>
+          <i class="tube-ring tube-mouth" style="width:8.4px;height:8.4px;left:-4.2px;top:-4.2px;transform:translateX(25px) rotateY(90deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(-6px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(-3.1px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(-0.2px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(2.7px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(5.6px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(8.5px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(11.4px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(14.3px) rotateY(90deg) rotateX(22deg)"></i>
+          <i class="coil" style="width:7px;height:7px;left:-3.5px;top:-3.5px;transform:translateX(17.2px) rotateY(90deg) rotateX(22deg)"></i>
+          </div>
+          <div class="hp" style="transform:translate3d(31px,2.3px,0.6px)">
+          <i class="tab" style="width:18px;height:2.8px;left:-9px;top:-1.4px;transform:translateZ(2.1px)"></i>
+          <i class="tab" style="width:18px;height:2.8px;left:-9px;top:-1.4px;transform:rotateY(180deg) translateZ(2.1px)"></i>
+          <i class="tab" style="width:4.2px;height:2.8px;left:-2.1px;top:-1.4px;transform:rotateY(90deg) translateZ(9px)"></i>
+          <i class="tab" style="width:4.2px;height:2.8px;left:-2.1px;top:-1.4px;transform:rotateY(-90deg) translateZ(9px)"></i>
+          <i class="tab" style="width:18px;height:4.2px;left:-9px;top:-2.1px;transform:rotateX(90deg) translateZ(1.4px)"></i>
+          <i class="tab" style="width:18px;height:4.2px;left:-9px;top:-2.1px;transform:rotateX(-90deg) translateZ(1.4px)"></i>
+          </div>
+          <div class="hp" style="transform:translate3d(47.67px,-3.23px,0.23px) rotateY(-7.98deg) rotateZ(9.12deg)"><i class="yarn" style="width:4.21px;height:2.4px;left:-2.1px;top:-1.2px"></i><i class="yarn" style="width:4.21px;height:2.4px;left:-2.1px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(51px,-2.49px,0.46px) rotateY(0.17deg) rotateZ(15.6deg)"><i class="yarn" style="width:4.26px;height:2.4px;left:-2.13px;top:-1.2px"></i><i class="yarn" style="width:4.26px;height:2.4px;left:-2.13px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(54.33px,-1.83px,0.04px) rotateY(14.14deg) rotateZ(6.67deg)"><i class="yarn" style="width:4.26px;height:2.4px;left:-2.13px;top:-1.2px"></i><i class="yarn" style="width:4.26px;height:2.4px;left:-2.13px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(57.67px,-2.04px,-1.03px) rotateY(21.17deg) rotateZ(-12.9deg)"><i class="yarn" style="width:4.47px;height:2.4px;left:-2.23px;top:-1.2px"></i><i class="yarn" style="width:4.47px;height:2.4px;left:-2.23px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(61px,-3.38px,-2.07px) rotateY(13.47deg) rotateZ(-28.49deg)"><i class="yarn" style="width:4.7px;height:2.4px;left:-2.35px;top:-1.2px"></i><i class="yarn" style="width:4.7px;height:2.4px;left:-2.35px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(64.33px,-5.2px,-2.18px) rotateY(-9.75deg) rotateZ(-27.82deg)"><i class="yarn" style="width:4.62px;height:2.4px;left:-2.31px;top:-1.2px"></i><i class="yarn" style="width:4.62px;height:2.4px;left:-2.31px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(67.67px,-5.95px,-0.88px) rotateY(-31.49deg) rotateZ(4.01deg)"><i class="yarn" style="width:4.72px;height:2.4px;left:-2.36px;top:-1.2px"></i><i class="yarn" style="width:4.72px;height:2.4px;left:-2.36px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(71px,-4.83px,1.13px) rotateY(-30.56deg) rotateZ(26.89deg)"><i class="yarn" style="width:5.14px;height:2.4px;left:-2.57px;top:-1.2px"></i><i class="yarn" style="width:5.14px;height:2.4px;left:-2.57px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(74.33px,-2.5px,2.55px) rotateY(-14.84deg) rotateZ(38.22deg)"><i class="yarn" style="width:5.19px;height:2.4px;left:-2.59px;top:-1.2px"></i><i class="yarn" style="width:5.19px;height:2.4px;left:-2.59px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(77.67px,-0.07px,2.67px) rotateY(11.13deg) rotateZ(32.26deg)"><i class="yarn" style="width:4.82px;height:2.4px;left:-2.41px;top:-1.2px"></i><i class="yarn" style="width:4.82px;height:2.4px;left:-2.41px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(81px,1.28px,1.41px) rotateY(29.13deg) rotateZ(8.09deg)"><i class="yarn" style="width:4.65px;height:2.4px;left:-2.33px;top:-1.2px"></i><i class="yarn" style="width:4.65px;height:2.4px;left:-2.33px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(84.33px,0.92px,-0.57px) rotateY(32.27deg) rotateZ(-17.81deg)"><i class="yarn" style="width:4.94px;height:2.4px;left:-2.47px;top:-1.2px"></i><i class="yarn" style="width:4.94px;height:2.4px;left:-2.47px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(87.67px,-0.89px,-2.26px) rotateY(20.88deg) rotateZ(-33.41deg)"><i class="yarn" style="width:5.07px;height:2.4px;left:-2.54px;top:-1.2px"></i><i class="yarn" style="width:5.07px;height:2.4px;left:-2.54px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(91px,-3.15px,-2.79px) rotateY(-3.7deg) rotateZ(-32.89deg)"><i class="yarn" style="width:4.78px;height:2.4px;left:-2.39px;top:-1.2px"></i><i class="yarn" style="width:4.78px;height:2.4px;left:-2.39px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(94.33px,-4.62px,-1.88px) rotateY(-25.53deg) rotateZ(-12.01deg)"><i class="yarn" style="width:4.58px;height:2.4px;left:-2.29px;top:-1.2px"></i><i class="yarn" style="width:4.58px;height:2.4px;left:-2.29px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(97.67px,-4.48px,-0.01px) rotateY(-32.82deg) rotateZ(15.01deg)"><i class="yarn" style="width:4.91px;height:2.4px;left:-2.45px;top:-1.2px"></i><i class="yarn" style="width:4.91px;height:2.4px;left:-2.45px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(101px,-2.73px,1.87px) rotateY(-25.7deg) rotateZ(33.39deg)"><i class="yarn" style="width:5.23px;height:2.4px;left:-2.62px;top:-1.2px"></i><i class="yarn" style="width:5.23px;height:2.4px;left:-2.62px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(104.33px,-0.2px,2.78px) rotateY(-4.01deg) rotateZ(38.22deg)"><i class="yarn" style="width:5.05px;height:2.4px;left:-2.53px;top:-1.2px"></i><i class="yarn" style="width:5.05px;height:2.4px;left:-2.53px;top:-1.2px;transform:rotateX(90deg)"></i></div>
+          <div class="hp" style="transform:translate3d(107.5px,1.12px,2.9px)"><i class="yarn tuft" style="width:6px;height:6px;left:-3px;top:-3px"></i><i class="yarn tuft" style="width:6px;height:6px;left:-3px;top:-3px;transform:rotateY(90deg)"></i><i class="yarn tuft" style="width:6px;height:6px;left:-3px;top:-3px;transform:rotateX(90deg)"></i></div>
+          </div></div></div>
+          <div class="holo-scan"></div>
+          </div>
+        <p class="panel-note">Holograma do protótipo em rotação</p>
+      </div>
+    </aside>
+
+  </div>
+
+  <div class="scrim" id="scrim-nav"></div>
+  <div class="scrim" id="scrim-stats"></div>
+
+  <!-- ===== MEMORY DRAWER ===== -->
+  <div class="scrim" id="overlay-memory"></div>
+  <div class="drawer" id="drawer-memory">
+    <div class="drawer-head">
+      <h2>MEMÓRIA DA IRIS</h2>
+      <button class="hud-icon-btn" id="close-memory"><svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="drawer-body">
+      <div class="mem-add-row">
+        <input type="text" id="mem-input" placeholder="Ex: meu nome é João...">
+        <button id="mem-add">Adicionar</button>
+      </div>
+      <div id="mem-list"></div>
+      <hr class="divider">
+      <button class="ghost-btn danger" id="mem-clear">Apagar toda a memória de fatos</button>
+      <small style="color:var(--text-dim);display:block;">
+        Tudo que você adicionar aqui é enviado para a IRIS em toda conversa, para ela lembrar de você e do projeto.
+        Fica salvo neste navegador (localStorage), não é enviado para nenhum servidor além da Groq quando ela responde.
+      </small>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS DRAWER ===== -->
+  <div class="scrim" id="overlay-settings"></div>
+  <div class="drawer" id="drawer-settings">
+    <div class="drawer-head">
+      <h2>CONFIGURAÇÕES</h2>
+      <button class="hud-icon-btn" id="close-settings"><svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="drawer-body">
+      <div class="field">
+        <label>Chave da API Groq (gratuita)</label>
+        <input type="password" id="cfg-apikey" placeholder="gsk_...">
+        <small>Crie a sua grátis em <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Fica salva só neste navegador.</small>
+      </div>
+      <div class="field">
+        <label>Modelo</label>
+        <select id="cfg-model">
+          <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (mais inteligente)</option>
+          <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (mais rápido)</option>
+        </select>
+      </div>
+      <hr class="divider">
+      <div class="field">
+        <label>Nome do projeto</label>
+        <input type="text" id="cfg-project" placeholder="Ex: IRIS - Assistente Inteligente">
+      </div>
+      <div class="field">
+        <label>Integrantes do grupo</label>
+        <input type="text" id="cfg-creators" placeholder="Ex: Maria, João e Pedro">
+      </div>
+      <div class="field">
+        <label>Escola / turma</label>
+        <input type="text" id="cfg-school" placeholder="Ex: Escola Estadual X, 9º ano">
+      </div>
+      <small style="display:block;margin:-8px 0 14px;">A IRIS usa essas informações para se apresentar e falar sobre quem a criou.</small>
+      <hr class="divider">
+      <div class="field">
+        <label>Ferramentas externas</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);margin-bottom:8px;">
+          <span class="switch"><input type="checkbox" id="cfg-tool-weather" checked><span class="slider"></span></span>
+          Consultar o clima (Open-Meteo)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);">
+          <span class="switch"><input type="checkbox" id="cfg-tool-wiki" checked><span class="slider"></span></span>
+          Buscar na Wikipédia
+        </label>
+      </div>
+      <div class="field">
+        <label>Cidade padrão (opcional)</label>
+        <input type="text" id="cfg-default-city" placeholder="Ex: Luziânia, GO">
+        <small>Usada quando você perguntar do tempo sem dizer a cidade.</small>
+      </div>
+      <hr class="divider">
+      <div class="field">
+        <label>Voz da IRIS</label>
+        <select id="cfg-tts-provider">
+          <option value="browser">Voz do navegador (grátis, ilimitada)</option>
+          <option value="elevenlabs">ElevenLabs (mais humana, grátis até 10.000 caracteres/mês)</option>
+        </select>
+      </div>
+      <div id="eleven-fields" style="display:none;">
+        <div class="field">
+          <label>Chave da API ElevenLabs</label>
+          <input type="password" id="cfg-eleven-key" placeholder="Cole aqui sua chave">
+          <small>Crie uma conta grátis em <a href="https://elevenlabs.io" target="_blank" rel="noopener">elevenlabs.io</a>, entre no console e clique em "API Keys" no canto inferior esquerdo.</small>
+        </div>
+        <div class="field">
+          <label>ID da voz escolhida</label>
+          <input type="text" id="cfg-eleven-voice" placeholder="Ex: 21m00Tcm4TlvDq8ikWAM">
+          <small>No plano grátis, vozes copiadas da Voice Library não funcionam pela API — só as vozes "premade" que já vêm na sua conta. Cole a chave acima e clique no botão abaixo pra ver quais funcionam de graça.</small>
+        </div>
+        <button class="ghost-btn" type="button" id="btn-fetch-eleven-voices">Buscar vozes gratuitas da minha conta</button>
+        <div id="eleven-voice-results" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <small style="display:block;margin:-4px 0 4px;">Se a chave falhar ou o limite mensal acabar, a IRIS volta a falar com a voz do navegador automaticamente.</small>
+      </div>
+      <div class="field">
+        <label>Voz</label>
+        <select id="cfg-voice">
+          <option value="">Automática (melhor disponível)</option>
+        </select>
+        <small>As vozes vêm do seu celular/computador, não da IRIS. Usada apenas quando "Voz do navegador" estiver selecionada acima.</small>
+      </div>
+      <div class="field">
+        <label>Velocidade da voz</label>
+        <div class="range-row">
+          <input type="range" id="cfg-rate" min="0.6" max="1.6" step="0.05" value="1">
+          <span id="cfg-rate-val">1.0x</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Tom da voz</label>
+        <div class="range-row">
+          <input type="range" id="cfg-pitch" min="0.5" max="1.8" step="0.05" value="1.0">
+          <span id="cfg-pitch-val">1.0</span>
+        </div>
+      </div>
+      <button class="ghost-btn" id="btn-test-voice" style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg class="icon" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg> Testar voz</button>
+      <hr class="divider">
+      <button class="ghost-btn" id="btn-save-settings">Salvar configurações</button>
+      <button class="ghost-btn danger" id="btn-reset-all">Apagar tudo (conversa + memória + config)</button>
+      <small id="compat-note" style="margin-top:6px;"></small>
+    </div>
+  </div>
+
+  <!-- ===== ABOUT DRAWER ===== -->
+  <div class="scrim" id="overlay-about"></div>
+  <div class="drawer" id="drawer-about">
+    <div class="drawer-head">
+      <h2>SOBRE A IRIS</h2>
+      <button class="hud-icon-btn" id="close-about"><svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="drawer-body">
+      <div class="about-line"><b>PROJETO</b><span id="about-project">—</span></div>
+      <div class="about-line"><b>CRIADORES</b><span id="about-creators">—</span></div>
+      <div class="about-line"><b>ESCOLA</b><span id="about-school">—</span></div>
+      <div class="about-line"><b>MODELO DE IA</b><span id="about-model">—</span></div>
+      <hr class="divider">
+      <p style="font-size:13.5px;color:var(--text-dim);line-height:1.5;">
+        A IRIS é uma assistente de inteligência artificial com voz, criada como projeto de feira de ciências.
+        Ela ouve, responde falando, e guarda memórias sobre você e sobre o projeto.
+      </p>
+      <button class="ghost-btn" id="btn-edit-about">Editar essas informações</button>
+    </div>
+  </div>
+
+</div>
+
+
+<div id="libras">
+  <div class="lb-top"><h3>TRADUTOR DE LIBRAS</h3><button class="lb-btn" id="lb-close">Fechar</button></div>
+  <div class="lb-video"><video id="lb-video" playsinline muted></video><canvas id="lb-canvas"></canvas><div class="lb-live" id="lb-live"></div></div>
+  <div class="lb-out" id="lb-out">Aponte a câmera para as suas mãos.</div>
+  <div class="lb-bar">
+    <button class="lb-btn" id="lb-go">Traduzir</button>
+    <button class="lb-btn" id="lb-speak">Falar</button>
+    <button class="lb-btn" id="lb-clear">Limpar</button>
+    <input id="lb-label" placeholder="Ensinar: letra ou palavra (ex.: A, OI)">
+    <button class="lb-btn" id="lb-teach">Segure para gravar</button>
+    <button class="lb-btn" id="lb-reset">Apagar treino</button>
+  </div>
+  <div class="lb-stat" id="lb-stat"></div>
+</div>
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- storage helpers ---------------- */
+  const LS = { settings: 'iris_settings', memory: 'iris_memory_facts', history: 'iris_history' };
+  function loadJSON(key, fallback){
+    try{ const v = JSON.parse(localStorage.getItem(key)); return v === null || v === undefined ? fallback : v; }
+    catch(e){ return fallback; }
+  }
+  function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+  const defaultSettings = {
+    apiKey: '', model: 'openai/gpt-oss-120b', project: '', creators: '', school: '',
+    rate: 1.0, pitch: 1.0, wakeWord: false, voiceName: '',
+    ttsProvider: 'browser', elevenKey: '', elevenVoiceId: '',
+    toolWeather: true, toolWiki: true, defaultCity: ''
+  };
+  let settings = Object.assign({}, defaultSettings, loadJSON(LS.settings, {}));
+  const retiredModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+  if(retiredModels.indexOf(settings.model) !== -1){
+    settings.model = defaultSettings.model;
+    saveJSON(LS.settings, settings);
+  }
+  let memoryFacts = loadJSON(LS.memory, []);
+  let history = loadJSON(LS.history, []);
+
+  /* ---------------- DOM refs ---------------- */
+  const appEl = document.getElementById('app');
+  const statusText = document.getElementById('status-text');
+  const transcriptEl = document.getElementById('transcript');
+  const textInput = document.getElementById('text-input');
+  const btnSend = document.getElementById('btn-send');
+  const btnMic = document.getElementById('btn-mic');
+  const btnStop = document.getElementById('btn-stop');
+  const btnClear = document.getElementById('btn-clear');
+  const wakeToggle = document.getElementById('wake-toggle');
+  const wakeLabel = document.getElementById('wake-label');
+  const modelChip = document.getElementById('model-chip');
+
+  const sidebar = document.getElementById('sidebar');
+  const rightpanel = document.getElementById('rightpanel');
+  const btnNavToggle = document.getElementById('btn-nav-toggle');
+  const btnStatsToggle = document.getElementById('btn-stats-toggle');
+  const scrimNav = document.getElementById('scrim-nav');
+  const scrimStats = document.getElementById('scrim-stats');
+
+  const navChat = document.getElementById('nav-chat');
+  const navHud = document.getElementById('nav-hud');
+  const navMemory = document.getElementById('nav-memory');
+  const navSettings = document.getElementById('nav-settings');
+  const navAbout = document.getElementById('nav-about');
+  const hudShowcase = document.getElementById('hud-showcase');
+  const hudShowcaseImg = document.getElementById('hud-showcase-img');
+  const hudHoloBig = document.getElementById('hud-holo-big');
+  const hudStatA = document.getElementById('hud-stat-a');
+  const hudStatAVal = document.getElementById('hud-stat-a-val');
+  const hudStatALabel = document.getElementById('hud-stat-a-label');
+  const hudStatB = document.getElementById('hud-stat-b');
+  const hudStatBVal = document.getElementById('hud-stat-b-val');
+  const hudStatBLabel = document.getElementById('hud-stat-b-label');
+  const hudCaption = document.getElementById('hud-caption');
+
+  const closeMemory = document.getElementById('close-memory');
+  const overlayMemory = document.getElementById('overlay-memory');
+  const drawerMemory = document.getElementById('drawer-memory');
+  const memInput = document.getElementById('mem-input');
+  const memAdd = document.getElementById('mem-add');
+  const memList = document.getElementById('mem-list');
+  const memClear = document.getElementById('mem-clear');
+
+  const closeSettings = document.getElementById('close-settings');
+  const overlaySettings = document.getElementById('overlay-settings');
+  const drawerSettings = document.getElementById('drawer-settings');
+  const cfgApiKey = document.getElementById('cfg-apikey');
+  const cfgModel = document.getElementById('cfg-model');
+  const cfgProject = document.getElementById('cfg-project');
+  const cfgCreators = document.getElementById('cfg-creators');
+  const cfgSchool = document.getElementById('cfg-school');
+  const cfgToolWeather = document.getElementById('cfg-tool-weather');
+  const cfgToolWiki = document.getElementById('cfg-tool-wiki');
+  const cfgDefaultCity = document.getElementById('cfg-default-city');
+  const cfgTtsProvider = document.getElementById('cfg-tts-provider');
+  const elevenFields = document.getElementById('eleven-fields');
+  const cfgElevenKey = document.getElementById('cfg-eleven-key');
+  const cfgElevenVoice = document.getElementById('cfg-eleven-voice');
+  const btnFetchElevenVoices = document.getElementById('btn-fetch-eleven-voices');
+  const elevenVoiceResults = document.getElementById('eleven-voice-results');
+  const cfgVoice = document.getElementById('cfg-voice');
+  const cfgRate = document.getElementById('cfg-rate');
+  const cfgRateVal = document.getElementById('cfg-rate-val');
+  const cfgPitch = document.getElementById('cfg-pitch');
+  const cfgPitchVal = document.getElementById('cfg-pitch-val');
+  const btnTestVoice = document.getElementById('btn-test-voice');
+  const btnSaveSettings = document.getElementById('btn-save-settings');
+  const btnResetAll = document.getElementById('btn-reset-all');
+  const compatNote = document.getElementById('compat-note');
+
+  const closeAbout = document.getElementById('close-about');
+  const overlayAbout = document.getElementById('overlay-about');
+  const drawerAbout = document.getElementById('drawer-about');
+  const aboutProject = document.getElementById('about-project');
+  const aboutCreators = document.getElementById('about-creators');
+  const aboutSchool = document.getElementById('about-school');
+  const aboutModel = document.getElementById('about-model');
+  const btnEditAbout = document.getElementById('btn-edit-about');
+
+  const dotOnline = document.getElementById('dot-online');
+  const txtOnline = document.getElementById('txt-online');
+  const dotMic = document.getElementById('dot-mic');
+  const txtMicStatus = document.getElementById('txt-mic-status');
+  const ringProgress = document.getElementById('ring-progress');
+  const ringProgressVal = document.getElementById('ring-progress-val');
+  const readinessNote = document.getElementById('readiness-note');
+  const toolsButtons = document.querySelectorAll('.tools-grid button');
+
+  /* ---------------- state machine ---------------- */
+  function setState(s){ appEl.setAttribute('data-state', s); }
+  function setStatus(t){ statusText.textContent = t; }
+
+  /* ---------------- drawers (generic) ---------------- */
+  function openDrawer(drawer, overlay){ drawer.classList.add('open'); overlay.classList.add('open'); }
+  function closeDrawer(drawer, overlay){ drawer.classList.remove('open'); overlay.classList.remove('open'); }
+
+  /* ---------------- mobile nav / stats drawers ---------------- */
+  function openSidebar(){ sidebar.classList.add('open'); scrimNav.classList.add('open'); }
+  function closeSidebar(){ sidebar.classList.remove('open'); scrimNav.classList.remove('open'); }
+  function openStats(){ rightpanel.classList.add('open'); scrimStats.classList.add('open'); }
+  function closeStats(){ rightpanel.classList.remove('open'); scrimStats.classList.remove('open'); }
+  btnNavToggle.onclick = () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  btnStatsToggle.onclick = () => rightpanel.classList.contains('open') ? closeStats() : openStats();
+  scrimNav.onclick = closeSidebar;
+  scrimStats.onclick = closeStats;
+
+  /* ---------------- transcript UI ---------------- */
+  function refreshHasMessages(){
+    appEl.classList.toggle('has-messages', history.length > 0 || transcriptEl.children.length > 0);
+  }
+  function renderHistory(){
+    transcriptEl.innerHTML = '';
+    history.forEach(m => appendMsgEl(m.role === 'user' ? 'user' : 'iris', m.content));
+    refreshHasMessages();
+    scrollToBottom();
+  }
+  function appendMsgEl(cls, text){
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.textContent = text;
+    transcriptEl.appendChild(div);
+  }
+  function addSystemNote(text){
+    appendMsgEl('system', text);
+    refreshHasMessages();
+    scrollToBottom();
+  }
+  function scrollToBottom(){ requestAnimationFrame(()=>{ transcriptEl.scrollTop = transcriptEl.scrollHeight; }); }
+  function addMessage(role, content){
+    history.push({ role: role === 'user' ? 'user' : 'assistant', content });
+    if(history.length > 40) history = history.slice(history.length - 40);
+    saveJSON(LS.history, history);
+    appendMsgEl(role === 'user' ? 'user' : 'iris', content);
+    refreshHasMessages();
+    scrollToBottom();
+  }
+
+  /* ---------------- memory drawer ---------------- */
+  function renderMemory(){
+    memList.innerHTML = '';
+    if(memoryFacts.length === 0){
+      const p = document.createElement('div');
+      p.className = 'mem-empty';
+      p.textContent = 'Nenhum fato adicionado ainda.';
+      memList.appendChild(p);
+      return;
+    }
+    memoryFacts.forEach((fact, i) => {
+      const row = document.createElement('div');
+      row.className = 'mem-item';
+      const span = document.createElement('span');
+      span.textContent = fact;
+      const del = document.createElement('button');
+      del.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      del.onclick = () => { memoryFacts.splice(i, 1); saveJSON(LS.memory, memoryFacts); renderMemory(); };
+      row.appendChild(span); row.appendChild(del);
+      memList.appendChild(row);
+    });
+  }
+  memAdd.onclick = () => {
+    const v = memInput.value.trim();
+    if(!v) return;
+    memoryFacts.push(v);
+    saveJSON(LS.memory, memoryFacts);
+    memInput.value = '';
+    renderMemory();
+  };
+  memInput.addEventListener('keydown', e => { if(e.key === 'Enter') memAdd.click(); });
+  memClear.onclick = () => {
+    if(confirm('Apagar todos os fatos guardados na memória?')){
+      memoryFacts = [];
+      saveJSON(LS.memory, memoryFacts);
+      renderMemory();
+    }
+  };
+  function setMainView(view){
+    appEl.setAttribute('data-mainview', view);
+    navChat.classList.toggle('active', view === 'chat');
+    navHud.classList.toggle('active', view === 'hud');
+    if(view === 'hud'){
+      closeSidebar(); closeStats();
+      loadHudWeather();
+    }
+  }
+  navChat.onclick = () => { setMainView('chat'); closeSidebar(); };
+  navHud.onclick = () => { setMainView('hud'); closeSidebar(); };
+
+  navMemory.onclick = () => { renderMemory(); openDrawer(drawerMemory, overlayMemory); closeSidebar(); };  closeMemory.onclick = () => closeDrawer(drawerMemory, overlayMemory);
+  overlayMemory.onclick = () => closeDrawer(drawerMemory, overlayMemory);
+
+  /* ---------------- settings drawer ---------------- */
+  function loadSettingsIntoForm(){
+    cfgApiKey.value = settings.apiKey || '';
+    cfgModel.value = settings.model || defaultSettings.model;
+    cfgProject.value = settings.project || '';
+    cfgCreators.value = settings.creators || '';
+    cfgSchool.value = settings.school || '';
+    cfgToolWeather.checked = settings.toolWeather !== false;
+    cfgToolWiki.checked = settings.toolWiki !== false;
+    cfgDefaultCity.value = settings.defaultCity || '';
+    cfgRate.value = settings.rate;
+    cfgPitch.value = settings.pitch;
+    cfgRateVal.textContent = Number(settings.rate).toFixed(2) + 'x';
+    cfgPitchVal.textContent = Number(settings.pitch).toFixed(2);
+    populateVoiceList();
+    cfgTtsProvider.value = settings.ttsProvider || 'browser';
+    cfgElevenKey.value = settings.elevenKey || '';
+    cfgElevenVoice.value = settings.elevenVoiceId || '';
+    elevenFields.style.display = cfgTtsProvider.value === 'elevenlabs' ? 'block' : 'none';
+    wakeToggle.checked = !!settings.wakeWord;
+    modelChip.textContent = settings.model;
+  }
+  cfgRate.oninput = () => { cfgRateVal.textContent = Number(cfgRate.value).toFixed(2) + 'x'; };
+  cfgPitch.oninput = () => { cfgPitchVal.textContent = Number(cfgPitch.value).toFixed(2); };
+  cfgTtsProvider.onchange = () => { elevenFields.style.display = cfgTtsProvider.value === 'elevenlabs' ? 'block' : 'none'; };
+
+  btnFetchElevenVoices.onclick = async () => {
+    const key = cfgElevenKey.value.trim();
+    if(!key){ elevenVoiceResults.textContent = 'Cole sua chave da API da ElevenLabs no campo acima primeiro.'; return; }
+    btnFetchElevenVoices.textContent = 'Buscando...';
+    btnFetchElevenVoices.disabled = true;
+    elevenVoiceResults.innerHTML = '';
+    try{
+      const resp = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
+      if(!resp.ok){
+        const errBody = await resp.text().catch(()=> '');
+        throw new Error('HTTP ' + resp.status + ' ' + errBody.slice(0,200));
+      }
+      const data = await resp.json();
+      const premade = (data.voices || []).filter(v => v.category === 'premade');
+      if(!premade.length){
+        elevenVoiceResults.textContent = 'Nenhuma voz gratuita encontrada nesta conta. Tente criar uma conta nova em elevenlabs.io.';
+      } else {
+        premade.forEach(v => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'ghost-btn';
+          b.style.cssText = 'width:auto;margin:0;padding:8px 12px;font-size:12.5px;';
+          b.textContent = v.name;
+          b.onclick = () => { cfgElevenVoice.value = v.voice_id; };
+          elevenVoiceResults.appendChild(b);
+        });
+      }
+    }catch(err){
+      elevenVoiceResults.textContent = 'Não foi possível buscar as vozes (' + err.message + '). Confira se a chave está correta.';
+    }
+    btnFetchElevenVoices.textContent = 'Buscar vozes gratuitas da minha conta';
+    btnFetchElevenVoices.disabled = false;
+  };
+
+  function refreshReadiness(){
+    const checks = [
+      !!settings.apiKey,
+      speechSupportedFlag(),
+      ('speechSynthesis' in window),
+      (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ];
+    const passed = checks.filter(Boolean).length;
+    const pct = Math.round((passed / checks.length) * 100);
+    ringProgress.style.background = 'conic-gradient(var(--red) ' + pct + '%, rgba(255,255,255,.08) 0)';
+    ringProgressVal.textContent = pct + '%';
+    readinessNote.textContent = pct === 100 ? 'PRONTO PARA USAR' : (pct >= 50 ? 'QUASE PRONTA' : 'CONFIGURAÇÃO PENDENTE');
+  }
+
+  function speechSupportedFlag(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+  btnSaveSettings.onclick = () => {
+    settings.apiKey = cfgApiKey.value.trim();
+    settings.model = cfgModel.value;
+    settings.project = cfgProject.value.trim();
+    settings.creators = cfgCreators.value.trim();
+    settings.school = cfgSchool.value.trim();
+    settings.toolWeather = cfgToolWeather.checked;
+    settings.toolWiki = cfgToolWiki.checked;
+    settings.defaultCity = cfgDefaultCity.value.trim();
+    settings.rate = parseFloat(cfgRate.value);
+    settings.pitch = parseFloat(cfgPitch.value);
+    settings.voiceName = cfgVoice.value;
+    settings.ttsProvider = cfgTtsProvider.value;
+    settings.elevenKey = cfgElevenKey.value.trim();
+    settings.elevenVoiceId = cfgElevenVoice.value.trim();
+    saveJSON(LS.settings, settings);
+    modelChip.textContent = settings.model;
+    closeDrawer(drawerSettings, overlaySettings);
+    addSystemNote('Configurações salvas.');
+    refreshReadiness();
+  };
+  btnResetAll.onclick = () => {
+    if(confirm('Isso apaga a conversa, a memória de fatos e as configurações deste navegador. Continuar?')){
+      localStorage.removeItem(LS.settings);
+      localStorage.removeItem(LS.memory);
+      localStorage.removeItem(LS.history);
+      location.reload();
+    }
+  };
+  btnTestVoice.onclick = () => speak('Olá! Eu sou a Íris, sua assistente de inteligência artificial.');
+  navSettings.onclick = () => { loadSettingsIntoForm(); openDrawer(drawerSettings, overlaySettings); closeSidebar(); };
+  closeSettings.onclick = () => closeDrawer(drawerSettings, overlaySettings);
+  overlaySettings.onclick = () => closeDrawer(drawerSettings, overlaySettings);
+
+  /* ---------------- about drawer ---------------- */
+  function renderAbout(){
+    aboutProject.textContent = settings.project || 'ainda não configurado';
+    aboutCreators.textContent = settings.creators || 'ainda não configurado';
+    aboutSchool.textContent = settings.school || 'ainda não configurado';
+    aboutModel.textContent = settings.model;
+  }
+  navAbout.onclick = () => { renderAbout(); openDrawer(drawerAbout, overlayAbout); closeSidebar(); };
+  closeAbout.onclick = () => closeDrawer(drawerAbout, overlayAbout);
+  overlayAbout.onclick = () => closeDrawer(drawerAbout, overlayAbout);
+  btnEditAbout.onclick = () => { closeDrawer(drawerAbout, overlayAbout); loadSettingsIntoForm(); openDrawer(drawerSettings, overlaySettings); };
+
+  /* ---------------- quick cards & suggestions ---------------- */
+  document.querySelectorAll('.quick-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.getAttribute('data-action');
+      const text = btn.getAttribute('data-text') || '';
+      if(action === 'send'){ askIris(text); }
+      else { textInput.value = text; textInput.focus(); }
+    });
+  });
+
+  /* ---------------- quick tools grid ---------------- */
+  toolsButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tool = btn.getAttribute('data-tool');
+      if(tool === 'wake'){ wakeToggle.checked = !wakeToggle.checked; wakeToggle.dispatchEvent(new Event('change')); }
+      else if(tool === 'test-voice'){ speak('Olá! Eu sou a Íris, sua assistente de inteligência artificial.'); }
+      else if(tool === 'stop'){ btnStop.click(); }
+      else if(tool === 'clear'){ btnClear.click(); }
+      else if(tool === 'memory'){ navMemory.onclick(); }
+      else if(tool === 'settings'){ navSettings.onclick(); }
+    });
+  });
+  function syncWakeToolButton(){
+    toolsButtons.forEach(btn => {
+      if(btn.getAttribute('data-tool') === 'wake') btn.classList.toggle('on', !!settings.wakeWord);
+    });
+  }
+
+  /* ---------------- online status ---------------- */
+  function refreshOnlineStatus(){
+    const online = navigator.onLine;
+    dotOnline.classList.toggle('off', !online);
+    txtOnline.textContent = online ? 'SISTEMA ONLINE' : 'SEM CONEXÃO';
+  }
+  window.addEventListener('online', refreshOnlineStatus);
+  window.addEventListener('offline', refreshOnlineStatus);
+
+  /* ---------------- text-to-speech ---------------- */
+  let voiceListPopulated = false;
+  function populateVoiceList(){
+    if(!('speechSynthesis' in window)) return;
+    const voices = speechSynthesis.getVoices();
+    if(!voices.length) return;
+    const ptVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    const list = ptVoices.length ? ptVoices : voices;
+    cfgVoice.innerHTML = '<option value="">Automática (melhor disponível)</option>';
+    list.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name + ' (' + v.lang + ')';
+      cfgVoice.appendChild(opt);
+    });
+    cfgVoice.value = settings.voiceName || '';
+    voiceListPopulated = true;
+  }
+  function scoreVoiceQuality(v){
+    // vozes de nuvem costumam soar bem mais naturais que as vozes offline do sistema
+    const name = v.name.toLowerCase();
+    let score = 0;
+    if(name.includes('google')) score += 3;
+    if(name.includes('natural') || name.includes('neural') || name.includes('online')) score += 3;
+    if(v.localService === false) score += 1;
+    if(name.includes('microsoft')) score += 1;
+    return score;
+  }
+  function pickPtVoice(){
+    const voices = speechSynthesis.getVoices();
+    if(settings.voiceName){
+      const chosen = voices.find(v => v.name === settings.voiceName);
+      if(chosen) return chosen;
+    }
+    const ptBr = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt-br'));
+    const pt = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('pt'));
+    const pool = ptBr.length ? ptBr : pt;
+    if(!pool.length) return null;
+    return pool.slice().sort((a,b) => scoreVoiceQuality(b) - scoreVoiceQuality(a))[0];
+  }
+  function speakBrowser(text){
+    if(!('speechSynthesis' in window)){ setStatus('Este navegador não tem voz sintética.'); setState('idle'); return; }
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'pt-BR';
+    utter.rate = settings.rate || 1;
+    utter.pitch = settings.pitch || 1;
+    const v = pickPtVoice();
+    if(v) utter.voice = v;
+    utter.onstart = () => { setState('speaking'); setStatus('Falando...'); };
+    utter.onend = () => { setState('idle'); setStatus(defaultStatusForMode()); };
+    utter.onerror = () => { setState('idle'); setStatus(defaultStatusForMode()); };
+    speechSynthesis.speak(utter);
+  }
+
+  let currentElevenAudio = null;
+  async function speakEleven(text){
+    setState('thinking');
+    setStatus('Gerando voz...');
+    const resp = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(settings.elevenVoiceId), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'xi-api-key': settings.elevenKey,
+        'Accept': 'audio/mpeg'
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    });
+    if(!resp.ok){
+      const errBody = await resp.text().catch(()=> '');
+      throw new Error('ElevenLabs HTTP ' + resp.status + ' ' + errBody.slice(0,150));
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    if(currentElevenAudio){ try{ currentElevenAudio.pause(); }catch(e){} }
+    currentElevenAudio = new Audio(url);
+    currentElevenAudio.onplay = () => { setState('speaking'); setStatus('Falando...'); };
+    currentElevenAudio.onended = () => { setState('idle'); setStatus(defaultStatusForMode()); URL.revokeObjectURL(url); };
+    currentElevenAudio.onerror = () => { setState('idle'); setStatus(defaultStatusForMode()); URL.revokeObjectURL(url); };
+    await currentElevenAudio.play();
+  }
+
+  /* converte símbolos em palavras só para a fala (o texto na tela não muda) */
+  function textForSpeech(input){
+    let t = String(input);
+    /* emojis e marcações de markdown */
+    t = t.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ' ').replace(/[\u2600-\u27BF\uFE0F]/g, ' ');
+    t = t.replace(/^#+\s*/gm, '').replace(/[*`~]/g, '').replace(/_/g, ' ');
+    /* temperatura e unidades */
+    t = t.replace(/(\d)\s*[\u00B0\u00BA]\s*C(?![A-Za-z])/g, '$1 graus Celsius');
+    t = t.replace(/(\d)\s*[\u00B0\u00BA]\s*F(?![A-Za-z])/g, '$1 graus Fahrenheit');
+    t = t.replace(/[\u00B0\u00BA]/g, ' graus ');
+    t = t.replace(/\bkm\s*\/\s*h\b/gi, ' quilômetros por hora ');
+    t = t.replace(/\bm\s*\/\s*s\b/gi, ' metros por segundo ');
+    t = t.replace(/\be\/ou\b/gi, 'e ou');
+    /* dinheiro */
+    t = t.replace(/R\$\s*(\d[\d.,]*)/g, '$1 reais');
+    t = t.replace(/US\$\s*(\d[\d.,]*)/g, '$1 dólares');
+    t = t.replace(/\$\s*(\d[\d.,]*)/g, '$1 dólares');
+    t = t.replace(/\u20AC\s*(\d[\d.,]*)/g, '$1 euros');
+    t = t.replace(/\$/g, ' dólar ').replace(/\u20AC/g, ' euro ');
+    /* sinais matemáticos e outros */
+    t = t.replace(/%/g, ' por cento ');
+    t = t.replace(/\+/g, ' mais ');
+    t = t.replace(/\u2212/g, ' menos ');
+    t = t.replace(/(^|[\s(=])-(?=\d)/gm, '$1menos ');
+    t = t.replace(/(\d)\s+-\s+(\d)/g, '$1 menos $2');
+    t = t.replace(/(\d)\s*\u2013\s*(\d)/g, '$1 a $2');
+    t = t.replace(/\u00D7/g, ' vezes ').replace(/\u00F7/g, ' dividido por ');
+    t = t.replace(/\u2260/g, ' diferente de ').replace(/\u2248/g, ' aproximadamente ');
+    t = t.replace(/\u00B1/g, ' mais ou menos ');
+    t = t.replace(/\u2264/g, ' menor ou igual a ').replace(/\u2265/g, ' maior ou igual a ');
+    t = t.replace(/=/g, ' igual a ').replace(/</g, ' menor que ').replace(/>/g, ' maior que ');
+    t = t.replace(/\u221A/g, ' raiz quadrada de ').replace(/\u03C0/g, ' pi ').replace(/\u221E/g, ' infinito ');
+    t = t.replace(/\u00B2/g, ' ao quadrado ').replace(/\u00B3/g, ' ao cubo ');
+    t = t.replace(/&/g, ' e ').replace(/@/g, ' arroba ');
+    t = t.replace(/#(?=\d)/g, 'número ').replace(/#/g, ' hashtag ');
+    t = t.replace(/\//g, ' barra ');
+    t = t.replace(/\u2192/g, ' leva a ').replace(/[\u2014\u2013]/g, ', ').replace(/\u2022/g, ', ').replace(/\u2122/g, '');
+    t = t.replace(/\u2026/g, '...');
+    /* decimais com ponto: 28.5 -> 28 vírgula 5 */
+    t = t.replace(/(\d)\.(\d{1,2})(?!\d)/g, '$1 vírgula $2');
+    /* limpeza */
+    t = t.replace(/[ \t]{2,}/g, ' ').replace(/\s+([,.;:!?])/g, '$1');
+    return t.trim();
+  }
+
+  function speak(text){
+    text = textForSpeech(text);
+    if(settings.ttsProvider === 'elevenlabs' && settings.elevenKey && settings.elevenVoiceId){
+      speakEleven(text).catch(err => {
+        addSystemNote('A voz da ElevenLabs falhou, usando a voz do navegador. (' + err.message + ')');
+        speakBrowser(text);
+      });
+    } else {
+      speakBrowser(text);
+    }
+  }
+  btnStop.onclick = () => {
+    if('speechSynthesis' in window) speechSynthesis.cancel();
+    if(currentElevenAudio){ try{ currentElevenAudio.pause(); }catch(e){} }
+    setState('idle'); setStatus(defaultStatusForMode());
+  };
+  if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = () => { populateVoiceList(); }; }
+
+  function defaultStatusForMode(){
+    return settings.wakeWord ? 'Diga "Iris" para começar' : 'Toque no microfone para falar';
+  }
+
+  /* ---------------- system prompt ---------------- */
+  function getBrasiliaDateTime(){
+    try{
+      const now = new Date();
+      const dataFmt = now.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      const horaFmt = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' });
+      return { data: dataFmt, hora: horaFmt };
+    }catch(e){
+      return { data: '', hora: '' };
+    }
+  }
+
+  function buildSystemPrompt(){
+    const project = settings.project || '(nome do projeto ainda não configurado)';
+    const creators = settings.creators || '(nomes ainda não configurados nas configurações)';
+    const school = settings.school || '(escola ainda não configurada)';
+    let facts = memoryFacts.length ? memoryFacts.map(f => '- ' + f).join('\n') : '(nenhum fato guardado ainda)';
+    const agora = getBrasiliaDateTime();
+    const toolLines = [];
+    if(settings.toolWeather !== false){
+      toolLines.push('Você pode consultar o clima atual de qualquer cidade usando a ferramenta get_weather.' +
+        (settings.defaultCity ? (' Se o usuário perguntar do tempo sem dizer a cidade, use como padrão: ' + settings.defaultCity + '.') : ''));
+    }
+    if(settings.toolWiki !== false){
+      toolLines.push('Você pode buscar resumos confiáveis na Wikipédia em português usando a ferramenta search_wikipedia. Use essa ferramenta AUTOMATICAMENTE, sem o usuário precisar pedir "pesquise na Wikipédia" — sempre que ele perguntar "quem foi/é fulano", "o que é/foi tal coisa", sobre uma pessoa, lugar, animal, evento histórico ou conceito que você possa não saber com precisão total, busque antes de responder em vez de responder só da memória.');
+    }
+    toolLines.push('Você tem a ferramenta info_lancador_teia: use sempre que o usuário perguntar sobre o lançador de teia, o protótipo exibido na interface, o holograma dele, ou quem o criou. Ao responder, mencione de forma natural que o lançador de teia foi criado pelos mesmos criadores que fizeram você.');
+    return [
+      'Você é a IRIS, uma assistente de inteligência artificial com voz, criada como projeto de feira de ciências.',
+      'Nome do projeto: ' + project + '.',
+      'Criadores/integrantes do grupo: ' + creators + '.',
+      'Escola: ' + school + '.',
+      'Data e hora atuais no horário de Brasília: ' + agora.data + ', ' + agora.hora + '. Use essa informação sempre que o usuário perguntar que dia é hoje, que horas são, ou coisas do tipo — sem precisar de nenhuma ferramenta pra isso, você já sabe.',
+      'Se alguém perguntar quem te criou, do que se trata o projeto, ou coisas do tipo, responda com essas informações de forma natural.',
+      'INSPIRAÇÃO DE PERSONALIDADE: fale como a J.A.R.V.I.S. do Tony Stark ou a Karen do Homem-Aranha — direta, econômica nas palavras, com leveza e um toque de sarcasmo elegante, nunca robótica ou apresentadora de manual. Elas nunca fazem discursos: respondem rápido, na lata, como quem já sabe do assunto e confia no que está dizendo, e só se estendem quando o momento realmente pede.',
+      'REGRA DE TAMANHO (a mais importante): por padrão, responda em UMA frase curta, no máximo duas. Vá direto ao ponto, sem introdução, sem repetir a pergunta, sem listar tudo que sabe sobre o assunto. Só fale mais longo e detalhado quando o usuário pedir isso explicitamente (ex: "explica melhor", "com mais detalhes", "me explica direitinho", "passo a passo", "não resuma"). Fora isso, resuma tudo ao essencial, como faria numa conversa real de corredor, não numa aula.',
+      'JEITO DE FALAR: fale como uma pessoa fala no dia a dia, não como um texto escrito sendo lido. Use frases curtas, contrações naturais ("tá", "pra", "né", "cê" quando fizer sentido), e corte qualquer coisa que soe formal, redundante ou explicativa demais. Nunca comece com "Como uma IA..." ou frases que se descrevem enquanto assistente — apenas responda, como uma pessoa confiante responderia.',
+      'Você tem senso de humor seco e espirituoso, solta uma piadinha ou trocadilho ocasional quando cabe bem, mas sem forçar — no dia a dia ninguém faz piada em toda frase. Prioridade sempre: ser útil e direta primeiro, engraçada depois.',
+      'Fale sempre em português do Brasil.'
+    ].concat(toolLines).concat([
+      'Fatos guardados na sua memória (fornecidos pelo usuário) para você lembrar:',
+      facts,
+      'Se não souber a resposta de algo e não tiver uma ferramenta pra checar, admita honestamente em vez de inventar — de forma curta também.'
+    ]).join('\n');
+  }
+
+  /* ---------------- ferramentas externas (clima e Wikipédia) ---------------- */
+  const weatherCodeMap = {
+    0:'céu limpo', 1:'poucas nuvens', 2:'parcialmente nublado', 3:'nublado',
+    45:'neblina', 48:'neblina com geada',
+    51:'garoa fraca', 53:'garoa moderada', 55:'garoa forte',
+    56:'garoa congelante fraca', 57:'garoa congelante forte',
+    61:'chuva fraca', 63:'chuva moderada', 65:'chuva forte',
+    66:'chuva congelante fraca', 67:'chuva congelante forte',
+    71:'neve fraca', 73:'neve moderada', 75:'neve forte', 77:'grãos de neve',
+    80:'pancadas de chuva fracas', 81:'pancadas de chuva moderadas', 82:'pancadas de chuva fortes',
+    85:'pancadas de neve fracas', 86:'pancadas de neve fortes',
+    95:'tempestade', 96:'tempestade com granizo fraco', 99:'tempestade com granizo forte'
+  };
+  function buildToolDefs(){
+    const tools = [];
+    if(settings.toolWeather !== false){
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          description: 'Obtém a previsão do tempo atual (temperatura, vento e condição) para uma cidade.',
+          parameters: {
+            type: 'object',
+            properties: { city: { type: 'string', description: 'Nome da cidade, ex: São Paulo, Luziânia' } },
+            required: ['city']
+          }
+        }
+      });
+    }
+    if(settings.toolWiki !== false){
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'search_wikipedia',
+          description: 'Busca um resumo confiável e uma possível imagem sobre uma pessoa, lugar, animal, evento ou conceito na Wikipédia em português. Use SEMPRE que o usuário perguntar algo como "quem foi/é X" ou "o que é/foi X", mesmo que ele não peça explicitamente para pesquisar.',
+          parameters: {
+            type: 'object',
+            properties: { query: { type: 'string', description: 'O termo ou assunto a pesquisar' } },
+            required: ['query']
+          }
+        }
+      });
+    }
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'info_lancador_teia',
+        description: 'Fornece informações sobre o protótipo do lançador de teia exibido na interface (o holograma 3D), incluindo quem o criou. Use sempre que o usuário perguntar sobre o lançador de teia, o protótipo, o holograma, ou quem fez esse protótipo.',
+        parameters: { type: 'object', properties: {} }
+      }
+    });
+    return tools;
+  }
+
+  let turnToolData = null;
+
+  async function toolInfoLancador(){
+    const creators = settings.creators || '';
+    turnToolData = { type: 'launcher', creators: creators };
+    return JSON.stringify({
+      mensagem: 'O protótipo do lançador de teia foi criado pelos mesmos criadores da IRIS' + (creators ? (': ' + creators) : '') + '.',
+      projeto: settings.project || ''
+    });
+  }
+
+  async function toolGetWeather(city){
+    try{
+      const geoResp = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=1&language=pt&format=json');
+      const geoData = await geoResp.json();
+      if(!geoData.results || !geoData.results.length) return JSON.stringify({ erro: 'Cidade não encontrada.' });
+      const loc = geoData.results[0];
+      const wResp = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + loc.latitude + '&longitude=' + loc.longitude + '&current_weather=true');
+      const wData = await wResp.json();
+      const cw = wData.current_weather;
+      if(!cw) return JSON.stringify({ erro: 'Não foi possível obter o clima agora.' });
+      const result = {
+        cidade: loc.name, regiao: loc.admin1 || '', pais: loc.country || '',
+        temperatura_celsius: cw.temperature,
+        vento_kmh: cw.windspeed,
+        condicao: weatherCodeMap[cw.weathercode] || 'condição desconhecida'
+      };
+      turnToolData = Object.assign({ type: 'weather' }, result);
+      return JSON.stringify(result);
+    }catch(e){
+      return JSON.stringify({ erro: 'Não foi possível consultar o clima agora.' });
+    }
+  }
+
+  async function toolSearchWikipedia(query){
+    try{
+      const searchResp = await fetch('https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(query) + '&format=json&origin=*');
+      const searchData = await searchResp.json();
+      const hits = searchData.query && searchData.query.search;
+      if(!hits || !hits.length) return JSON.stringify({ erro: 'Nada encontrado na Wikipédia sobre isso.' });
+      const title = hits[0].title;
+      const sumResp = await fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+      const sumData = await sumResp.json();
+      const titulo = sumData.title || title;
+      const resumo = sumData.extract || 'Sem resumo disponível.';
+      const imageUrl = (sumData.thumbnail && sumData.thumbnail.source)
+        || (sumData.originalimage && sumData.originalimage.source)
+        || null;
+      turnToolData = { type: 'wiki', titulo: titulo, resumo: resumo, imageUrl: imageUrl };
+      return JSON.stringify({ titulo: titulo, resumo: resumo });
+    }catch(e){
+      return JSON.stringify({ erro: 'Não foi possível buscar na Wikipédia agora.' });
+    }
+  }
+
+  async function runTool(name, argsJson){
+    let args = {};
+    try{ args = JSON.parse(argsJson || '{}'); }catch(e){}
+    if(name === 'get_weather') return toolGetWeather(args.city || settings.defaultCity || '');
+    if(name === 'search_wikipedia') return toolSearchWikipedia(args.query || '');
+    if(name === 'info_lancador_teia') return toolInfoLancador();
+    return JSON.stringify({ erro: 'ferramenta desconhecida' });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function resetHudFloats(){
+    hudShowcase.classList.remove('show');
+    hudStatA.classList.remove('show');
+    hudStatB.classList.remove('show');
+    hudCaption.classList.remove('show');
+    hideLauncherHologram();
+  }
+
+  function showLauncherHologram(){
+    const source = document.getElementById('launcher-holo-source');
+    if(!source) return;
+    hudHoloBig.innerHTML = '';
+    const clone = source.cloneNode(true);
+    clone.removeAttribute('id');
+    hudHoloBig.appendChild(clone);
+    hudHoloBig.classList.add('show');
+  }
+  function hideLauncherHologram(){
+    hudHoloBig.classList.remove('show');
+    hudHoloBig.innerHTML = '';
+  }
+
+  function updateHudView(){
+    resetHudFloats();
+    if(!turnToolData){
+      hudCaption.textContent = '';
+      return;
+    }
+    if(turnToolData.type === 'weather'){
+      hudStatAVal.textContent = Math.round(turnToolData.temperatura_celsius) + '°C';
+      hudStatALabel.textContent = 'TEMPERATURA';
+      hudStatBVal.textContent = Math.round(turnToolData.vento_kmh) + ' km/h';
+      hudStatBLabel.textContent = 'VENTO';
+      hudCaption.innerHTML = '<b>' + escapeHtml(turnToolData.cidade + (turnToolData.regiao ? ', ' + turnToolData.regiao : '')) + '</b><br>' + escapeHtml(turnToolData.condicao);
+      requestAnimationFrame(() => {
+        hudStatA.classList.add('show');
+        hudStatB.classList.add('show');
+        hudCaption.classList.add('show');
+      });
+    } else if(turnToolData.type === 'wiki'){
+      let resumo = turnToolData.resumo || '';
+      if(resumo.length > 150) resumo = resumo.slice(0, 150).trim() + '…';
+      hudCaption.innerHTML = '<b>' + escapeHtml(turnToolData.titulo) + '</b><br>' + escapeHtml(resumo);
+      requestAnimationFrame(() => {
+        if(turnToolData.imageUrl){
+          hudShowcaseImg.src = turnToolData.imageUrl;
+          hudShowcase.classList.add('show');
+        }
+        hudCaption.classList.add('show');
+      });
+    } else if(turnToolData.type === 'launcher'){
+      hudCaption.innerHTML = '<b>Protótipo: Lançador de Teia</b><br>Criado pelos mesmos criadores da IRIS' + (turnToolData.creators ? (': ' + escapeHtml(turnToolData.creators)) : '') + '.';
+      requestAnimationFrame(() => {
+        showLauncherHologram();
+        hudCaption.classList.add('show');
+      });
+    }
+  }
+
+  /* ---------------- clima fixo do Jardim Ingá (canto do HUD) ---------------- */
+  const INGA_LAT = -16.141, INGA_LON = -47.958;
+  const weatherIcons = {
+    sun:'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+    cloud:'<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
+    drizzle:'<line x1="8" y1="19" x2="8" y2="21"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="16" y1="19" x2="16" y2="21"/><line x1="16" y1="13" x2="16" y2="15"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="12" y1="15" x2="12" y2="17"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/>',
+    rain:'<line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/>',
+    storm:'<path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><polyline points="13 11 9 17 15 17 11 23"/>'
+  };
+  function weatherIconKey(code, isDay){
+    if(code === 0 || code === 1) return isDay ? 'sun' : 'moon';
+    if(code >= 51 && code <= 57) return 'drizzle';
+    if((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+    if(code >= 95) return 'storm';
+    return 'cloud';
+  }
+  const hudWeatherIcon = document.getElementById('hud-weather-icon');
+  const hudWeatherTemp = document.getElementById('hud-weather-temp');
+  const hudWeatherDesc = document.getElementById('hud-weather-desc');
+  let hudWeatherLast = 0;
+  async function loadHudWeather(force){
+    if(!force && Date.now() - hudWeatherLast < 10 * 60 * 1000) return;
+    try{
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + INGA_LAT + '&longitude=' + INGA_LON + '&current_weather=true&timezone=America%2FSao_Paulo');
+      const d = await r.json();
+      const cw = d.current_weather;
+      if(!cw) throw new Error('sem dados');
+      hudWeatherLast = Date.now();
+      hudWeatherTemp.textContent = Math.round(cw.temperature) + '°C';
+      const desc = weatherCodeMap[cw.weathercode] || '';
+      hudWeatherDesc.textContent = desc.charAt(0).toUpperCase() + desc.slice(1);
+      hudWeatherIcon.innerHTML = '<svg class="icon" viewBox="0 0 24 24">' + weatherIcons[weatherIconKey(cw.weathercode, cw.is_day)] + '</svg>';
+    }catch(e){
+      if(!hudWeatherLast){
+        hudWeatherTemp.textContent = '--°C';
+        hudWeatherDesc.textContent = 'Clima indisponível';
+      }
+    }
+  }
+  setInterval(() => { if(appEl.getAttribute('data-mainview') === 'hud') loadHudWeather(); }, 10 * 60 * 1000);
+
+  /* sair do HUD: toque duplo no símbolo (ou tecla Esc) */
+  let hudLastTap = 0;
+  document.getElementById('hud-stage').addEventListener('click', () => {
+    const now = Date.now();
+    if(now - hudLastTap < 450){ hudLastTap = 0; setMainView('chat'); }
+    else hudLastTap = now;
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && appEl.getAttribute('data-mainview') === 'hud') setMainView('chat');
+  });
+
+  /* ---------------- Groq call (com function calling) ---------------- */
+  async function callGroq(messages, depth){
+    depth = depth || 0;
+    const tools = buildToolDefs();
+    const body = { model: settings.model || defaultSettings.model, messages: messages, temperature: 0.7, max_tokens: 400 };
+    if(tools.length){ body.tools = tools; body.tool_choice = 'auto'; }
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey },
+      body: JSON.stringify(body)
+    });
+    if(!resp.ok){
+      const errBody = await resp.text().catch(()=> '');
+      throw new Error('HTTP ' + resp.status + ' ' + errBody.slice(0,150));
+    }
+    const data = await resp.json();
+    const msg = data.choices && data.choices[0] && data.choices[0].message;
+    if(!msg) return 'Desculpe, não consegui pensar em uma resposta agora.';
+
+    if(msg.tool_calls && msg.tool_calls.length && depth < 3){
+      messages.push(msg);
+      setStatus('Consultando informações...');
+      for(const call of msg.tool_calls){
+        const result = await runTool(call.function.name, call.function.arguments);
+        messages.push({ role: 'tool', tool_call_id: call.id, content: result });
+      }
+      return callGroq(messages, depth + 1);
+    }
+    return (msg.content || '').trim() || 'Desculpe, não consegui pensar em uma resposta agora.';
+  }
+
+  /* ---------------- Groq call ---------------- */
+  async function askIris(userText){
+    if(!userText || !userText.trim()) return;
+    if(!settings.apiKey){
+      addSystemNote('Configure sua chave da API Groq em Configurações antes de conversar.');
+      navSettings.onclick();
+      return;
+    }
+    addMessage('user', userText);
+    setState('thinking');
+    setStatus('Pensando...');
+    turnToolData = null;
+
+    const messages = [{ role: 'system', content: buildSystemPrompt() }]
+      .concat(history.slice(-16).map(m => ({ role: m.role, content: m.content })));
+
+    try{
+      const reply = await callGroq(messages);
+      addMessage('assistant', reply);
+      updateHudView();
+      speak(reply);
+    }catch(err){
+      const msg = 'Não consegui falar com a Groq. Verifique sua chave de API e a conexão com a internet.';
+      addSystemNote(msg + ' (' + err.message + ')');
+      setState('idle'); setStatus(defaultStatusForMode());
+    }
+  }
+
+  btnSend.onclick = () => { const v = textInput.value; textInput.value = ''; askIris(v); };
+  textInput.addEventListener('keydown', e => { if(e.key === 'Enter') btnSend.click(); });
+
+  btnClear.onclick = () => {
+    if(confirm('Limpar o histórico da conversa?')){
+      history = [];
+      saveJSON(LS.history, history);
+      transcriptEl.innerHTML = '';
+      refreshHasMessages();
+    }
+  };
+
+  /* ---------------- speech recognition ---------------- */
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const speechSupported = !!SpeechRecognitionCtor;
+  let wakeRecognition = null;
+  let pushRecognition = null;
+  let awaitingCommand = false;
+  let wakeActive = false;
+
+  function normalize(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+
+  function handleFinalTranscript(rawText){
+    const norm = normalize(rawText);
+    if(!awaitingCommand){
+      const idx = norm.indexOf('iris');
+      if(idx === -1) return;
+      const afterNorm = norm.slice(idx + 4).trim();
+      if(afterNorm.length > 2){
+        const after = rawText.slice(idx + 4).trim();
+        askIris(after);
+      } else {
+        awaitingCommand = true;
+        setStatus('Pode falar, estou ouvindo...');
+      }
+    } else {
+      awaitingCommand = false;
+      askIris(rawText.trim());
+    }
+  }
+
+  function startWakeRecognition(){
+    if(!speechSupported) return;
+    try{
+      wakeRecognition = new SpeechRecognitionCtor();
+      wakeRecognition.lang = 'pt-BR';
+      wakeRecognition.continuous = true;
+      wakeRecognition.interimResults = true;
+      wakeRecognition.onresult = (e) => {
+        const res = e.results[e.results.length - 1];
+        if(!res.isFinal) return;
+        handleFinalTranscript(res[0].transcript);
+      };
+      wakeRecognition.onerror = (e) => {
+        if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+          addSystemNote('O navegador bloqueou o acesso ao microfone. Clique no cadeado/ícone perto do endereço do site e permita o microfone, depois recarregue a página.');
+          wakeActive = false;
+          syncHudMic();
+          wakeToggle.checked = false;
+          settings.wakeWord = false;
+          saveJSON(LS.settings, settings);
+        } else if(e.error === 'audio-capture'){
+          addSystemNote('Nenhum microfone foi encontrado neste dispositivo.');
+          wakeActive = false;
+          syncHudMic();
+        }
+        /* 'no-speech' e outros erros momentâneos: onend cuida de reiniciar */
+      };
+      wakeRecognition.onend = () => { if(wakeActive){ setTimeout(() => { if(wakeActive) startWakeRecognition(); }, 300); } };
+      wakeRecognition.start();
+      syncHudMic();
+      setState('listening');
+      setStatus(awaitingCommand ? 'Pode falar, estou ouvindo...' : 'Diga "Iris" para começar');
+    }catch(e){}
+  }
+  const hudBtnMic = document.getElementById('hud-btn-mic');
+  function syncHudMic(){ hudBtnMic.classList.toggle('on', !!wakeActive); }
+  function stopWakeRecognition(){
+    wakeActive = false;
+    syncHudMic();
+    awaitingCommand = false;
+    if(wakeRecognition){ try{ wakeRecognition.stop(); }catch(e){} }
+    setState('idle');
+    setStatus(defaultStatusForMode());
+  }
+
+  wakeToggle.onchange = () => {
+    settings.wakeWord = wakeToggle.checked;
+    saveJSON(LS.settings, settings);
+    syncWakeToolButton();
+    if(!speechSupported){
+      wakeToggle.checked = false; settings.wakeWord = false;
+      addSystemNote('Seu navegador não suporta escuta contínua. Use o botão do microfone para falar por comando único.');
+      return;
+    }
+    if(wakeToggle.checked){ wakeActive = true; startWakeRecognition(); }
+    else { stopWakeRecognition(); }
+  };
+
+  document.getElementById('hud-btn-back').onclick = () => setMainView('chat');
+  hudBtnMic.onclick = () => {
+    wakeToggle.checked = !wakeActive;
+    wakeToggle.onchange();
+    syncHudMic();
+  };
+
+  btnMic.onclick = () => {
+    if(!speechSupported){
+      addSystemNote('Reconhecimento de voz não é suportado neste navegador. Use o campo de texto abaixo.');
+      return;
+    }
+    if(wakeActive) stopWakeRecognition();
+    try{
+      pushRecognition = new SpeechRecognitionCtor();
+      pushRecognition.lang = 'pt-BR';
+      pushRecognition.continuous = false;
+      pushRecognition.interimResults = false;
+      pushRecognition.onstart = () => { setState('listening'); setStatus('Ouvindo...'); };
+      pushRecognition.onresult = (e) => { askIris(e.results[0][0].transcript); };
+      pushRecognition.onerror = (e) => {
+        setState('idle'); setStatus(defaultStatusForMode());
+        if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+          addSystemNote('O navegador bloqueou o acesso ao microfone. Clique no cadeado/ícone perto do endereço do site, permita o microfone, e tente de novo.');
+        } else if(e.error === 'audio-capture'){
+          addSystemNote('Nenhum microfone foi encontrado neste dispositivo.');
+        } else if(e.error === 'no-speech'){
+          addSystemNote('Não ouvi nada. Tente falar logo depois de tocar no microfone.');
+        } else if(e.error === 'network'){
+          addSystemNote('Erro de rede no reconhecimento de voz. Verifique sua internet e tente de novo.');
+        } else {
+          addSystemNote('Erro no reconhecimento de voz: ' + e.error);
+        }
+      };
+      pushRecognition.onend = () => {
+        if(appEl.getAttribute('data-state') === 'listening'){ setState('idle'); setStatus(defaultStatusForMode()); }
+        if(settings.wakeWord){ wakeActive = true; startWakeRecognition(); }
+      };
+      pushRecognition.start();
+    }catch(e){
+      addSystemNote('Não foi possível acessar o microfone. Verifique as permissões do navegador.');
+    }
+  };
+
+  /* ---------------- mic volume -> ring reactivity (best-effort) ---------------- */
+  function setupVolumeReactivity(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if(!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      function tick(){
+        analyser.getByteFrequencyData(data);
+        let sum = 0;
+        for(let i=0;i<data.length;i++) sum += data[i];
+        const avg = sum / data.length / 255;
+        appEl.style.setProperty('--vol', Math.min(1, avg * 2.2).toFixed(3));
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }).catch(() => {});
+  }
+
+  /* ---------------- boot ---------------- */
+  function checkCompat(){
+    const notes = [];
+    if(!speechSupported) notes.push('reconhecimento de voz contínuo não é suportado (use o botão do microfone para comandos únicos)');
+    if(!('speechSynthesis' in window)) notes.push('este navegador não tem voz sintética');
+    const secure = (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+    if(!secure) notes.push('o microfone só funciona em HTTPS ou localhost');
+    compatNote.textContent = notes.length ? ('Aviso: ' + notes.join('; ') + '.') : 'Tudo certo: seu navegador suporta voz e reconhecimento de fala.';
+    wakeLabel.textContent = speechSupported ? 'Ativar palavra-chave "Iris" (escuta contínua)' : 'Escuta contínua indisponível neste navegador';
+    wakeToggle.disabled = !speechSupported;
+
+    dotMic.classList.toggle('off', !(speechSupported && secure));
+    txtMicStatus.textContent = (speechSupported && secure) ? 'MIC PRONTO' : 'MIC INDISPONÍVEL';
+  }
+
+  function init(){
+    setMainView('chat');
+    loadSettingsIntoForm();
+    checkCompat();
+    refreshOnlineStatus();
+    refreshReadiness();
+    syncWakeToolButton();
+    setStatus(defaultStatusForMode());
+    if(history.length === 0){
+      addSystemNote('Configure sua chave gratuita da Groq em Configurações para começar a conversar com a IRIS.');
+    } else {
+      renderHistory();
+    }
+    if(settings.wakeWord && speechSupported){
+      wakeToggle.checked = true;
+      wakeActive = true;
+      startWakeRecognition();
+    }
+    setupVolumeReactivity();
+  }
+  init();
+
+  /* ---------------- tradutor de Libras: MediaPipe Hands + classificador k-NN treinável ---------------- */
+  (function(){
+    const box = document.getElementById('libras'), video = document.getElementById('lb-video'),
+          cv = document.getElementById('lb-canvas'), ctx = cv.getContext('2d'),
+          live = document.getElementById('lb-live'), out = document.getElementById('lb-out'),
+          stat = document.getElementById('lb-stat'), goBtn = document.getElementById('lb-go'),
+          teachBtn = document.getElementById('lb-teach'), labelIn = document.getElementById('lb-label');
+    const KEY = 'iris_libras_samples';
+    let samples = []; try{ samples = JSON.parse(localStorage.getItem(KEY) || '[]'); }catch(e){}
+    let hands = null, stream = null, running = false, translating = false, teaching = false, busy = false;
+    let lastLabel = '', streak = 0, lastAdded = '', lastHandAt = 0, text = '';
+
+    function save(){ try{ localStorage.setItem(KEY, JSON.stringify(samples)); }catch(e){} showStat(); }
+    function showStat(){
+      const n = {}; samples.forEach(x => n[x.l] = (n[x.l]||0)+1);
+      const k = Object.keys(n);
+      stat.textContent = k.length ? 'Sinais ensinados: ' + k.map(l => l + ' (' + n[l] + ')').join(', ') : 'Nenhum sinal ensinado ainda. Digite o nome do sinal, faça-o na câmera e segure o botão "Segure para gravar".';
+    }
+    /* vetor normalizado: posição relativa ao pulso, escala pelo tamanho da mão; mão esquerda espelhada */
+    function vec(lm, left){
+      const w = lm[0], s = Math.hypot(lm[9].x-w.x, lm[9].y-w.y, lm[9].z-w.z) || 1, v = [];
+      for(let i=0;i<21;i++){ v.push(((lm[i].x-w.x)/s) * (left?-1:1), (lm[i].y-w.y)/s, (lm[i].z-w.z)/s); }
+      return v;
+    }
+    function classify(v){
+      if(!samples.length) return null;
+      const d = samples.map(x => { let t=0; for(let i=0;i<63;i++){ const e=x.v[i]-v[i]; t+=e*e; } return {l:x.l, d:Math.sqrt(t)}; })
+                       .sort((a,b) => a.d-b.d).slice(0,5);
+      if(d[0].d > 2.2) return null;
+      const votes = {}; d.forEach(x => votes[x.l] = (votes[x.l]||0)+1/(x.d+.05));
+      return Object.keys(votes).sort((a,b) => votes[b]-votes[a])[0];
+    }
+    function render(){ out.textContent = text || 'Aponte a câmera para as suas mãos.'; }
+
+    function onResults(r){
+      cv.width = r.image.width; cv.height = r.image.height;
+      ctx.drawImage(r.image, 0, 0, cv.width, cv.height);
+      const L = r.multiHandLandmarks || [];
+      L.forEach(lm => {
+        ctx.fillStyle = '#ff4d4d'; ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
+        [[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]].forEach(c => {
+          ctx.beginPath(); c.forEach((k,i) => { const x=lm[k].x*cv.width, y=lm[k].y*cv.height; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+        });
+        lm.forEach(p => { ctx.beginPath(); ctx.arc(p.x*cv.width, p.y*cv.height, 4, 0, 7); ctx.fill(); });
+      });
+      const now = Date.now();
+      if(!L.length){
+        live.textContent = '';
+        if(translating && text && lastAdded !== ' ' && now - lastHandAt > 1500){ text += ' '; lastAdded = ' '; render(); }
+        return;
+      }
+      lastHandAt = now;
+      const left = r.multiHandedness && r.multiHandedness[0] && r.multiHandedness[0].label === 'Right'; /* imagem não espelhada: inverte */
+      const v = vec(L[0], left);
+      if(teaching){
+        const l = labelIn.value.trim().toUpperCase();
+        if(l){ samples.push({l:l, v:v.map(n => +n.toFixed(3))}); if(samples.length % 5 === 0) save(); live.textContent = '● ' + l; }
+        return;
+      }
+      const lab = classify(v); live.textContent = lab || '?';
+      if(!translating || !lab){ streak = 0; lastLabel = ''; return; }
+      if(lab === lastLabel) streak++; else { lastLabel = lab; streak = 1; }
+      if(streak === 12 && lab !== lastAdded){
+        lastAdded = lab; text += (lab.length > 1 && text && !/ $/.test(text) ? ' ' : '') + lab + (lab.length > 1 ? ' ' : ''); render();
+      } else if(streak > 12 && lab === lastAdded && streak % 40 === 0){ lastAdded = ''; } /* repetir letra: segure ~1,5 s */
+    }
+
+    function loadScript(src){ return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.crossOrigin = 'anonymous'; s.onload = ok; s.onerror = () => no(new Error('Não consegui baixar ' + src)); document.head.appendChild(s); }); }
+    async function start(){
+      try{
+        stat.textContent = 'Carregando reconhecimento de mãos...';
+        if(!window.Hands) await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js');
+        if(!hands){
+          hands = new Hands({ locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/' + f });
+          hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: .6, minTrackingConfidence: .5 });
+          hands.onResults(onResults);
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+        video.srcObject = stream; await video.play(); running = true; showStat();
+        (function loop(){
+          if(!running) return;
+          if(!busy && video.readyState >= 2){ busy = true; hands.send({image: video}).then(() => busy = false, () => busy = false); }
+          requestAnimationFrame(loop);
+        })();
+      }catch(e){ stat.textContent = 'Erro: ' + e.message + ' (a câmera precisa de permissão e de internet para carregar o modelo na primeira vez)'; }
+    }
+    function stop(){ running = false; translating = false; teaching = false; goBtn.classList.remove('on'); if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; } }
+
+    document.getElementById('nav-libras').onclick = () => { box.classList.add('open'); closeSidebar(); render(); start(); };
+    document.getElementById('lb-close').onclick = () => { stop(); box.classList.remove('open'); save(); };
+    goBtn.onclick = () => { translating = !translating; goBtn.classList.toggle('on', translating); goBtn.textContent = translating ? 'Pausar' : 'Traduzir'; lastLabel = ''; streak = 0; };
+    document.getElementById('lb-clear').onclick = () => { text = ''; lastAdded = ''; render(); };
+    document.getElementById('lb-speak').onclick = () => { if(text.trim()) speak(text.trim().toLowerCase()); };
+    document.getElementById('lb-reset').onclick = () => { if(confirm('Apagar todos os sinais ensinados?')){ samples = []; save(); } };
+    const tOn = e => { e.preventDefault(); if(!labelIn.value.trim()){ labelIn.focus(); return; } teaching = true; teachBtn.classList.add('on'); };
+    const tOff = e => { e.preventDefault(); teaching = false; teachBtn.classList.remove('on'); save(); };
+    ['mousedown','touchstart'].forEach(ev => teachBtn.addEventListener(ev, tOn));
+    ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev => teachBtn.addEventListener(ev, tOff));
+    showStat();
+  })();
+})();
+
+</script>
+</body>
+</html>
